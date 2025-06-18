@@ -1,19 +1,42 @@
 import React from 'react';
 import Logo from '../components/ui/Logo';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
-function HomePage() {
+const pageVariants = {
+  initial:  { x: '100vw' },
+  in:       { x: 0 },
+  out:      { x: '-100vw' }
+};
+const pageTransition = {
+  type: 'tween',
+  ease: 'easeInOut',
+  duration: 0.5
+};
+
+export default function HomePage() {
   const navigate = useNavigate();
+  const features = [
+    { icon: '💬', label: 'Instant Chat' },
+    { icon: '🗺️', label: 'Secret Spots' },
+    { icon: '🍴', label: 'Food Tips' },
+    { icon: '📅', label: 'Day Plans' }
+  ];
 
   return (
-    <div
-      className="min-h-screen w-full flex flex-col justify-between items-center p-4 text-white"
+    <motion.div
+      className="absolute inset-0 min-h-screen w-full flex flex-col justify-between items-center p-4 text-white"
       style={{
         backgroundImage: "url('/sea-bg.png')",
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat"
       }}
+      initial="initial"
+      animate="in"
+      exit="out"
+      variants={pageVariants}
+      transition={pageTransition}
     >
       {/* Logo */}
       <div className="pt-6">
@@ -35,10 +58,15 @@ function HomePage() {
           alt="Rhodes glowing map"
           className="w-auto h-[38vh] max-w-[90vw] object-contain drop-shadow-lg mb-4"
         />
+
+        {/* Urgency trigger */}
+        <p className="text-sm text-[#F4E1C1] mb-10 drop-shadow-sm">
+          First 3 questions free — explore now while spots are still quiet!
+        </p>
       </div>
 
       {/* CTAs */}
-      <div className="flex flex-col items-center w-full max-w-xs gap-4">
+      <div className="flex flex-col items-center w-full max-w-xs gap-4 mb-10">
         <button
           className="w-full py-4 text-base rounded-full bg-[#FF6B00] text-white font-medium hover:bg-[#ff7d24] transition shadow-md"
           onClick={() =>
@@ -47,37 +75,30 @@ function HomePage() {
             })
           }
         >
-          🔍 Chat Now — It’s Free
+          🔓 Unlock Hidden Spots — Start Free
         </button>
         <button
           className="w-full py-4 text-base rounded-full border border-[#F4E1C1] text-white font-medium bg-white/20 backdrop-blur-sm hover:bg-white/30 transition shadow-sm"
           onClick={() => navigate('/features')}
         >
-          📖 See How It Works
+          📖 How It Works
         </button>
       </div>
 
       {/* Feature Icons */}
-      <div className="grid grid-cols-2 gap-6 items-center mb-6">
-        {[
-          { icon: '💬', label: 'Instant AI Chat' },
-          { icon: '🗺️', label: 'Secret Spot Finder' },
-          { icon: '🍴', label: 'Local Food Tips' },
-          { icon: '📅', label: 'Custom Day Plans' }
-        ].map((feat, i) => (
+      <div className="grid grid-cols-4 gap-4 items-center mb-10">
+        {features.map((feat, i) => (
           <div key={i} className="flex flex-col items-center">
             <span className="text-3xl mb-1 drop-shadow-sm">{feat.icon}</span>
-            <span className="text-sm font-sans drop-shadow-sm">{feat.label}</span>
+            <span className="text-xs font-sans drop-shadow-sm">{feat.label}</span>
           </div>
         ))}
       </div>
 
       {/* Footer */}
-      <footer className="w-full text-xs text-slate-300 text-center pb-0">
-        &copy; {new Date().getFullYear()} Wander Rhodes. All rights reserved.
+      <footer className="w-full text-xs text-center py-2 text-slate-300">
+        Built by locals for travelers 🌞
       </footer>
-    </div>
+    </motion.div>
   );
 }
-
-export default HomePage;
