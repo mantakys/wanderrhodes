@@ -74,11 +74,16 @@ export default defineConfig({
       'Cross-Origin-Embedder-Policy': 'credentialless'
     },
     allowedHosts: true,
+    hmr: {
+      overlay: false    // disable Vite's full-screen error overlay if you prefer
+    },
     proxy: {
+      // Proxy all /api requests to your backend (Express + Stripe + OpenAI)
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'http://localhost:4242',
         changeOrigin: true,
-        secure: false
+        secure: false,
+        ws: true
       }
     }
   },
