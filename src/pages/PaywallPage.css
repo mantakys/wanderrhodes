@@ -1,0 +1,9 @@
+/* Custom styles for the Stripe Embedded Checkout */
+#checkout .stripe-checkout {
+  border-radius: 0.75rem; /* 12px */
+  overflow: hidden;
+}
+
+#checkout .stripe-checkout iframe {
+    border-radius: 0.75rem !important; /* 12px */
+} 

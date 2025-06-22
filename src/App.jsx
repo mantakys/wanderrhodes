@@ -13,16 +13,17 @@ import ChatRegionPage from './pages/ChatPage';
 import PaywallPage    from './pages/PaywallPage';
 import ReturnPage     from './pages/ReturnPage'; // 👈 import the new page
 
-// 1. Pure cross-fade variants
+// 1. "Depth Scale" - iOS-inspired fluid transition
 const pageVariants = {
-  initial: { opacity: 0 },
-  in:      { opacity: 1 },
-  out:     { opacity: 0 }
+  initial: { opacity: 0, scale: 0.96 },
+  in:      { opacity: 1, scale: 1 },
+  out:     { opacity: 0, scale: 1.04 }
 };
-// 2. Slow, smooth timing
+// 2. Fast and snappy spring physics for a natural feel
 const pageTransition = {
-  duration: 0.8,
-  ease: 'easeInOut'
+  type: 'spring',
+  stiffness: 300,
+  damping: 25
 };
 
 function AnimatedRoutes() {

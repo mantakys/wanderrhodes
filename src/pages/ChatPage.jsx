@@ -1,6 +1,8 @@
 // src/pages/ChatPage.jsx
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, Send, Sparkles } from "lucide-react";
 import Logo from "../components/ui/Logo";
 
 const SUGGESTIONS = [
@@ -9,9 +11,85 @@ const SUGGESTIONS = [
   "Plan a day trip in Rhodes old town"
 ];
 
-function formatTime(date) {
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
+const formatTime = (date) =>
+  date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+const ChatBubble = ({ sender, message, time, blur }) => {
+  const isUser = sender === "user";
+  const navigate = useNavigate();
+
+  const bubbleVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
+  };
+
+  return (
+    <motion.div
+      variants={bubbleVariants}
+      initial="hidden"
+      animate="visible"
+      className={`relative flex ${isUser ? "justify-end" : "justify-start"}`}
+    >
+      <div
+        className={`px-4 py-3 max-w-[80%] break-words rounded-3xl shadow-lg transition-all duration-300 ${
+          blur && !isUser ? "blur-md" : ""
+        }`}
+        style={{
+          background: isUser
+            ? "linear-gradient(135deg, #E8D5A4, #B89E6A)"
+            : "rgba(26, 31, 61, 0.7)",
+          backdropFilter: "blur(10px)",
+          border: isUser ? "none" : "1px solid rgba(244, 225, 193, 0.1)",
+          color: isUser ? "#1a1f3d" : "#F4E1C1",
+          fontWeight: 500
+        }}
+      >
+        <p className="text-sm">{message}</p>
+        <div className="text-xs text-right mt-2 opacity-60">
+          {formatTime(time)}
+        </div>
+      </div>
+      {blur && !isUser && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <button
+            onClick={() => navigate("/paywall")}
+            className="px-4 py-2 text-sm font-semibold rounded-full bg-gradient-to-r from-[#E8D5A4] to-[#CAB17B] text-[#242b50] shadow-xl hover:scale-105 transition-transform"
+          >
+            Unlock Full Access
+          </button>
+        </div>
+      )}
+    </motion.div>
+  );
+};
+
+const TypingBubble = () => (
+  <motion.div
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0 }}
+    className="flex items-center space-x-1.5"
+  >
+    <div
+      className="h-2 w-2 bg-[#F4E1C1] rounded-full"
+      style={{ animation: "bounce 1s infinite" }}
+    />
+    <div
+      className="h-2 w-2 bg-[#F4E1C1] rounded-full"
+      style={{ animation: "bounce 1s infinite 0.2s" }}
+    />
+    <div
+      className="h-2 w-2 bg-[#F4E1C1] rounded-full"
+      style={{ animation: "bounce 1s infinite 0.4s" }}
+    />
+    <style>{`
+      @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-6px); }
+      }
+    `}</style>
+  </motion.div>
+);
 
 export default function ChatPage() {
   const navigate = useNavigate();
@@ -25,7 +103,7 @@ export default function ChatPage() {
     {
       sender: "ai",
       message:
-        "Hi! I’m your local Rhodes AI assistant. Ask me anything—food, sights, or secrets!",
+        "Hi! I'm your local Rhodes AI assistant. Ask me anything—food, sights, or secrets!",
       time: new Date(),
       blur: false
     }
@@ -36,7 +114,6 @@ export default function ChatPage() {
 
   const freeRemaining = Math.max(FREE_LIMIT - replyCount, 0);
 
-  // auto-scroll
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
@@ -44,7 +121,7 @@ export default function ChatPage() {
   const sanitize = (str) => str.replace(/<\/?[^>]+(>|$)/g, "");
 
   const handleSend = async (overrideText) => {
-    if (replyCount > FREE_LIMIT) {
+    if (replyCount >= FREE_LIMIT) {
       navigate("/paywall");
       return;
     }
@@ -54,16 +131,16 @@ export default function ChatPage() {
     const text = overrideText != null ? overrideText : sanitize(input).trim();
     if (!text || text.length > 500) return;
 
-    if (replyCount === FREE_LIMIT) setBlurNext(true);
+    if (replyCount === FREE_LIMIT -1 ) setBlurNext(true);
 
     setInput("");
     setLastSent(now);
-    setIsTyping(true);
-
+    
     setMessages((m) => [
       ...m,
       { sender: "user", message: text, time: new Date(), blur: false }
     ]);
+    setIsTyping(true);
 
     try {
       const history = messages.map((m) => ({
@@ -108,166 +185,108 @@ export default function ChatPage() {
 
   return (
     <div
-      className="h-screen overflow-hidden flex flex-col bg-gradient-to-b from-[#1a1f3d] via-[#242b50] to-transparent"
+      className="h-screen max-h-screen w-full flex flex-col font-sans"
       style={{
         backgroundImage: "url('/sea-bg.png')",
         backgroundSize: "cover",
         backgroundPosition: "center"
       }}
     >
-      {/* HEADER */}
-      <header className="sticky top-0 z-50 bg-[#1a1f3d] py-3 px-4 grid grid-cols-3 items-center">
-        {/* back */}
-        <button
+      <header className="flex items-center justify-between p-4 bg-black/20 backdrop-blur-sm border-b border-white/10 shrink-0">
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
           onClick={() => navigate("/")}
-          className="justify-self-start w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition"
+          className="p-2 rounded-full hover:bg-white/10"
         >
-          <svg width={20} height={20} viewBox="0 0 20 20" fill="none">
-            <path
-              d="M13.5 17L7.5 10L13.5 3"
-              stroke="#F4E1C1"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-        {/* logo */}
-        <div className="justify-self-center">
-          <Logo className="h-8 whitespace-nowrap" />
-        </div>
-        {/* placeholder */}
-        <div className="w-8 h-8" />
+          <ArrowLeft className="text-white/80" />
+        </motion.button>
+        <Logo className="h-8 text-white" />
+        <div className="w-10" />
       </header>
 
-      {/* CHAT */}
-      <div
-        className="flex-1 overflow-y-auto px-4 py-2 space-y-2"
-        style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}
-      >
-        {messages.map((m, i) => (
-          <ChatBubble
-            key={i}
-            sender={m.sender}
-            message={m.message}
-            time={m.time}
-            blur={m.blur}
-          />
-        ))}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <AnimatePresence>
+          {messages.map((m, i) => (
+            <ChatBubble
+              key={i}
+              sender={m.sender}
+              message={m.message}
+              time={m.time}
+              blur={m.blur}
+            />
+          ))}
+        </AnimatePresence>
         {isTyping && <TypingBubble />}
         <div ref={chatEndRef} />
       </div>
 
-      {/* BOTTOM: suggestions + free-pill + input */}
-      <div className="sticky bottom-0 z-50 bg-gradient-to-b from-transparent to-[#242b50] px-4 pt-3 pb-safe">
-        {/* suggestions (always visible if you have free prompts) */}
-        {freeRemaining > 0 && (
-          <div className="flex flex-col gap-2 mb-3">
+      <motion.footer
+        initial={{ y: 100 }}
+        animate={{ y: 0 }}
+        transition={{ type: "spring", stiffness: 100 }}
+        className="p-4 bg-black/30 backdrop-blur-md"
+      >
+        {freeRemaining > 0 && messages.length <= 1 && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-3 space-y-2"
+          >
             {SUGGESTIONS.map((s, i) => (
-              <button
+              <motion.button
                 key={i}
+                whileHover={{ scale: 1.02 }}
                 onClick={() => handleSend(s)}
-                className="w-full text-left rounded-full px-4 py-2 bg-white/10 text-[#F4E1C1] font-medium backdrop-blur-md shadow-sm border border-[#F4E1C120] hover:bg-[#E8D5C180] hover:text-[#242b50] transition text-sm"
+                className="w-full text-left rounded-xl px-4 py-3 bg-white/5 border border-white/10 text-[#F4E1C1] font-medium backdrop-blur-sm shadow-sm hover:bg-white/10 transition text-sm flex items-center gap-3"
               >
+                <Sparkles className="w-4 h-4 text-[#E8D5A4] shrink-0" />
                 {s}
-              </button>
+              </motion.button>
             ))}
-          </div>
+          </motion.div>
         )}
 
-        {/* free-prompts pill */}
         <div className="flex justify-center mb-2">
-          <div className="px-3 py-1 text-xs font-semibold rounded-full border border-[#F4E1C1] bg-white/10 text-[#F4E1C1] whitespace-nowrap">
-            {freeRemaining} free {freeRemaining !== 1 ? "prompts" : "prompt"} left
+          <div className="px-3 py-1 text-xs font-semibold rounded-full border border-white/20 bg-black/20 text-white/70">
+            {freeRemaining > 0 ? (
+              `${freeRemaining} free ${
+                freeRemaining !== 1 ? "prompts" : "prompt"
+              } left`
+            ) : (
+              "Upgrade for unlimited access"
+            )}
           </div>
         </div>
 
-        {/* input bar */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
             handleSend();
           }}
-          className="flex items-center gap-2 mb-safe"
+          className="flex items-center gap-2"
         >
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={
-              freeRemaining > 0 ? "Ask anything about Rhodes…" : "Upgrade to continue"
+              freeRemaining > 0 ? "Ask anything..." : "Please upgrade"
             }
-            disabled={isTyping}
-            className="flex-1 rounded-full px-4 py-2 bg-[#1a1f3d] text-white placeholder:text-[#888faa] outline-none shadow-inner text-sm"
+            disabled={isTyping || freeRemaining <= 0}
+            className="flex-1 rounded-full px-5 py-3 bg-black/30 text-white placeholder:text-white/50 border border-white/20 focus:ring-2 focus:ring-[#E8D5A4] focus:border-[#E8D5A4] outline-none transition duration-300"
           />
-          <button
+          <motion.button
             type="submit"
-            disabled={isTyping}
-            className={`rounded-full px-5 py-2 text-sm font-semibold transition ${
-              isTyping
-                ? "bg-gray-600 cursor-not-allowed text-gray-300"
-                : "bg-gradient-to-r from-[#E8D5A4] to-[#CAB17B] text-[#242b50] hover:from-[#CAB17B] hover:to-[#E8D5A4]"
-            }`}
+            disabled={isTyping || !input.trim()}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-[#E8D5A4] to-[#B89E6A] text-[#1a1f3d] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isTyping ? "Waiting…" : "Send"}
-          </button>
+            <Send size={20} />
+          </motion.button>
         </form>
-      </div>
-    </div>
-  );
-}
-
-function ChatBubble({ sender, message, time, blur }) {
-  const navigate = useNavigate();
-  const isUser = sender === "user";
-
-  return (
-    <div className={`relative flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`px-5 py-3 max-w-[75%] break-words filter ${
-          blur && !isUser ? "blur-sm" : ""
-        }`}
-        style={{
-          background: isUser
-            ? "linear-gradient(135deg, #E8D5A4 30%, #CAB17B 100%)"
-            : "rgba(0,0,0,0.6)",
-          color: isUser ? "#242b50" : "#F4E1C1",
-          borderRadius: "20px",
-          fontSize: "1rem",
-          fontWeight: 500,
-          boxShadow: isUser
-            ? "0 4px 12px rgba(0,0,0,0.15)"
-            : "0 2px 8px rgba(0,0,0,0.5)"
-        }}
-      >
-        {message}
-        <div className="text-[0.7rem] text-[#888faa] text-right mt-1">
-          {formatTime(time)}
-        </div>
-      </div>
-      {blur && !isUser && (
-        <button
-          onClick={() => navigate("/paywall")}
-          className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white font-semibold rounded-lg"
-        >
-          Upgrade to continue
-        </button>
-      )}
-    </div>
-  );
-}
-
-function TypingBubble() {
-  return (
-    <div className="flex justify-start">
-      <div className="flex items-center gap-2 px-5 py-3 max-w-[60%] rounded-[20px] bg-[#1a1f3d] text-[#F4E1C1] shadow-inner">
-        <span>Wander Rhodes is typing</span>
-        <div className="flex gap-1">
-          <div className="w-2 h-2 bg-[#E8D5A4] rounded-full animate-ping" />
-          <div className="w-2 h-2 bg-[#E8D5A4] rounded-full animate-ping animation-delay-150" />
-          <div className="w-2 h-2 bg-[#E8D5A4] rounded-full animate-ping animation-delay-300" />
-        </div>
-      </div>
+      </motion.footer>
     </div>
   );
 }
