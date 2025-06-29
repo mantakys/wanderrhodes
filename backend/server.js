@@ -2,13 +2,21 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
 import chatHandler from './chatHandler.js';
 import Stripe from 'stripe';
 import mapboxDirectionsProxy from './tools/mapboxDirectionsProxy.js';
 import axios from 'axios';
 import { fetchPlacePhoto } from './tools/googlePlaces.js';
+import { createJWT, generateMagicToken, verifyJWT } from './auth.js';
+import { getUserByEmail, upsertUser, setMagicToken, clearMagicToken } from './db.js';
+import { sendMagicLink } from './email.js';
+import { optionalAuth, requirePaidUser } from './middleware/auth.js';
+import { chatGuard } from './middleware/chatGuard.js';
 
 dotenv.config();
+
+const IS_PROD = process.env.NODE_ENV === 'production';
 
 // Debug: Check if Google API key is loaded
 if (process.env.GOOGLE_MAPS_API_KEY) {
@@ -20,6 +28,7 @@ if (process.env.GOOGLE_MAPS_API_KEY) {
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
 
 if (!process.env.OPENAI_API_KEY) {
   console.error('❌ Missing OPENAI_API_KEY');
@@ -27,8 +36,8 @@ if (!process.env.OPENAI_API_KEY) {
 }
 
 // ----------------- Stripe Setup -----------------
-if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_PRICE_ID) {
-  console.error('❌ Missing STRIPE_SECRET_KEY or STRIPE_PRICE_ID');
+if (!process.env.STRIPE_SECRET_KEY) {
+  console.error('❌ Missing STRIPE_SECRET_KEY');
   process.exit(1);
 }
 
@@ -37,19 +46,46 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 });
 
 const DOMAIN = process.env.DOMAIN || 'http://localhost:5173';
-const PRICE_ID = process.env.STRIPE_PRICE_ID;
+const PRICE_ID = IS_PROD ? process.env.STRIPE_PRICE_ID_PROD : process.env.STRIPE_PRICE_ID_DEV;
 
 console.log('✅ Stripe setup complete');
 console.log('ℹ️ Using Price ID:', PRICE_ID);
 console.log('ℹ️ Return URL:', `${DOMAIN}/return?session_id={CHECKOUT_SESSION_ID}`);
 
 // Mount the same handler as used by the serverless function
-app.post('/api/chat', chatHandler);
+app.post('/api/chat', optionalAuth, chatGuard, chatHandler);
+
+// ----------------- Auth Endpoints -----------------
+app.post('/api/request-login', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+  const { token, hash, expires } = generateMagicToken();
+  upsertUser(email.toLowerCase());
+  setMagicToken(email.toLowerCase(), hash, expires);
+  const link = `${DOMAIN}/login?token=${token}`;
+  await sendMagicLink(email, link);
+  res.json({ success: true });
+});
+
+app.post('/api/verify-login', async (req, res) => {
+  const { token } = req.body;
+  if (!token) return res.status(400).json({ error: 'Token is required' });
+  const hash = crypto.createHash('sha256').update(token).digest('hex');
+  const user = getUserByToken(hash);
+  if (!user || user.magic_token_expires < Date.now()) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+  clearMagicToken(user.email);
+  const jwt = createJWT({ email: user.email });
+  res.cookie('jwt', jwt, { httpOnly: true, secure: IS_PROD, sameSite: 'strict' });
+  res.json({ success: true, jwt });
+});
+
 
 // ----------------- Stripe Endpoints -----------------
 
 // Create Embedded Checkout Session
-app.post('/api/create-checkout-session', async (req, res) => {
+app.post('/api/create-checkout-session', optionalAuth, async (req, res) => {
   console.log('🔔 POST /api/create-checkout-session');
   try {
     const session = await stripe.checkout.sessions.create({
@@ -63,6 +99,7 @@ app.post('/api/create-checkout-session', async (req, res) => {
         },
       ],
       return_url: `${DOMAIN}/return?session_id={CHECKOUT_SESSION_ID}`,
+      customer_email: req.user ? req.user.email : undefined,
     });
 
     console.log('✅ Created Stripe session:', session.id);

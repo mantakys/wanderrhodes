@@ -47,7 +47,11 @@
     "slick-carousel": "^1.8.1",
     "stripe": "^18.2.1",
     "tailwind-merge": "^1.14.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "better-sqlite3": "^9.4.3",
+    "cookie-parser": "^1.4.6",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.9"
   },
   "devDependencies": {
     "@types/node": "^20.8.3",
