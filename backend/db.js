@@ -39,6 +39,8 @@ const updateTokenStmt = db.prepare('UPDATE users SET magic_token_hash = ?, magic
 const clearTokenStmt = db.prepare('UPDATE users SET magic_token_hash = NULL, magic_token_expires = NULL WHERE email = ?');
 const incFreeChatsStmt = db.prepare('UPDATE users SET free_chats_used = free_chats_used + 1 WHERE email = ?');
 const setFreeChatsStmt = db.prepare('UPDATE users SET free_chats_used = ? WHERE email = ?');
+const getAllUsersStmt = db.prepare('SELECT * FROM users ORDER BY created_at DESC');
+const deleteUserStmt = db.prepare('DELETE FROM users WHERE email = ?');
 
 // -------------------------
 // Public API
@@ -75,6 +77,14 @@ export function incrementFreeChats(email) {
 
 export function setFreeChats(email, count) {
   setFreeChatsStmt.run(count, email.toLowerCase());
+}
+
+export function getAllUsers() {
+  return getAllUsersStmt.all();
+}
+
+export function deleteUserByEmail(email) {
+  return deleteUserStmt.run(email.toLowerCase());
 }
 
 export function close() {

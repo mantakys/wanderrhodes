@@ -1,6 +1,7 @@
 import React from 'react';
 import { HashRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import { lazy } from 'react';
 
 import HomePage       from './pages/HomePage';
 import FeaturesPage   from './pages/FeaturesPage';
@@ -8,6 +9,7 @@ import ChatRegionPage from './pages/ChatPage';
 import PaywallPage    from './pages/PaywallPage';
 import TravelPlansPage from './pages/TravelPlansPage';
 import TravelPlanViewPage from './pages/TravelPlanViewPage';
+const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'));
 
 // iOS-style depth transition
 const pageVariants = {
@@ -32,6 +34,9 @@ function AnimatedRoutes() {
     { path: '/paywall', element: PaywallPage },
     { path: '/plans', element: TravelPlansPage },
     { path: '/plans/:id', element: TravelPlanViewPage },
+    ...(import.meta.env.MODE !== 'production' ? [
+      { path: '/admin/users', element: AdminUsersPage }
+    ] : []),
   ];
 
   return (

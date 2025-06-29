@@ -75,7 +75,11 @@ export default defineConfig({
     },
     allowedHosts: true,
     proxy: {
-      '/api': 'http://localhost:4242',
+      '/api': {
+        target: 'http://localhost:4242',
+        changeOrigin: true,
+        secure: false
+      }
     }
   },
   resolve: {
