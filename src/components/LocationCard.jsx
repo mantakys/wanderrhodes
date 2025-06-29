@@ -34,18 +34,33 @@ const LocationCard = ({ location }) => {
         setIsLoading(true);
         setError(null);
         try {
-          const endpoint = '/api/place-photo'; // proxy handles dev
-          const query = encodeURIComponent(`${location.name}, ${location.location.address}`);
-          const res = await fetch(`${endpoint}?query=${query}`);
-
+          const endpoint = '/api/place-photo';
+          
+          // Use precise query with location context for Rhodes
+          const query = `${location.name}, Rhodes, Greece`;
+          
+          console.log(`🔍 Searching for photo: ${query}`);
+          
+          const res = await fetch(`${endpoint}?query=${encodeURIComponent(query)}`, {
+            signal: AbortSignal.timeout(15000) // 15 second timeout
+          });
+          
           if (!res.ok) {
-            throw new Error('Place data not found.');
+            if (res.status === 404) {
+              throw new Error('No photos found for this location.');
+            } else {
+              throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            }
           }
 
           const data = await res.json();
+          console.log(`✅ Successfully found photo for: ${location.name}`);
           setPlaceData(data);
         } catch (err) {
-          setError(err.message);
+          const errorMessage = err.name === 'TimeoutError' 
+            ? 'Request timed out. Please try again later.'
+            : err.message;
+          setError(errorMessage);
           console.error(`Failed to fetch place data for ${location.name}:`, err);
         } finally {
           setIsLoading(false);
@@ -125,8 +140,19 @@ const LocationCard = ({ location }) => {
                   </div>
                 )}
                 {error && !isLoading && (
-                  <div className="h-48 flex items-center justify-center">
-                    <p className="text-red-400/80">Could not load photo.</p>
+                  <div className="h-48 flex flex-col items-center justify-center gap-2">
+                    <p className="text-red-400/80 text-sm text-center px-4">{error}</p>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setError(null);
+                        setPlaceData(null);
+                        // This will trigger the useEffect to retry
+                      }}
+                      className="text-[#E8D5A4] hover:text-[#F4E1C1] text-sm underline transition-colors"
+                    >
+                      Retry
+                    </button>
                   </div>
                 )}
                 {placeData?.photoUrl && !isLoading && (
@@ -134,12 +160,27 @@ const LocationCard = ({ location }) => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.5 }}
-                    className="w-full h-48 flex items-center justify-center overflow-hidden"
+                    className="w-full h-48 flex items-center justify-center overflow-hidden rounded-lg bg-black/30"
                   >
                     <img
                       src={`/api/photo-proxy?url=${encodeURIComponent(placeData.photoUrl)}`}
                       alt={`Photo of ${displayName}`}
-                      className="w-auto h-auto max-w-full max-h-full object-contain"
+                      className="w-auto h-auto max-w-full max-h-full object-contain rounded-lg"
+                      onError={(e) => {
+                        console.error('Image failed to load:', placeData.photoUrl);
+                        // Hide the image and show an error message
+                        e.target.style.display = 'none';
+                        const errorDiv = e.target.parentElement.querySelector('.image-error');
+                        if (!errorDiv) {
+                          const errorElement = document.createElement('div');
+                          errorElement.className = 'image-error text-red-400/80 text-sm text-center';
+                          errorElement.textContent = 'Image failed to load';
+                          e.target.parentElement.appendChild(errorElement);
+                        }
+                      }}
+                      onLoad={() => {
+                        console.log('Image loaded successfully:', placeData.photoUrl);
+                      }}
                     />
                   </motion.div>
                 )}

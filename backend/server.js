@@ -5,8 +5,17 @@ import dotenv from 'dotenv';
 import chatHandler from './chatHandler.js';
 import Stripe from 'stripe';
 import mapboxDirectionsProxy from './tools/mapboxDirectionsProxy.js';
+import axios from 'axios';
+import { fetchPlacePhoto } from './tools/googlePlaces.js';
 
 dotenv.config();
+
+// Debug: Check if Google API key is loaded
+if (process.env.GOOGLE_MAPS_API_KEY) {
+  console.log('✅ Google API Key for Places loaded successfully.');
+} else {
+  console.error('❌ GOOGLE_MAPS_API_KEY not found. Make sure it is set in your .env file.');
+}
 
 const app = express();
 app.use(cors());
@@ -36,9 +45,6 @@ console.log('ℹ️ Return URL:', `${DOMAIN}/return?session_id={CHECKOUT_SESSION
 
 // Mount the same handler as used by the serverless function
 app.post('/api/chat', chatHandler);
-
-// Mount Mapbox directions proxy
-app.use('/api', mapboxDirectionsProxy);
 
 // ----------------- Stripe Endpoints -----------------
 
@@ -92,15 +98,43 @@ app.get('/api/photo-proxy', async (req, res) => {
   console.log('🖼️ Proxy fetching image:', url);
   if (!url) return res.status(400).send('Missing url');
   try {
-    const resp = await axios.get(url, { responseType: 'arraybuffer' });
+    const resp = await axios.get(url, { 
+      responseType: 'arraybuffer',
+      timeout: 10000, // 10 second timeout
+      headers: {
+        'User-Agent': 'WanderRhodes/1.0 (https://wanderrhodes.com)'
+      }
+    });
     res.set('Content-Type', resp.headers['content-type'] || 'image/jpeg');
     res.set('Cache-Control', 'public,max-age=86400');
+    res.set('Access-Control-Allow-Origin', '*');
     res.send(resp.data);
   } catch (e) {
     console.error('Photo proxy error:', e.message);
     res.status(500).send('Failed to fetch image');
   }
 });
+
+// Add /api/place-photo endpoint
+app.get('/api/place-photo', async (req, res) => {
+  const query = req.query.query;
+  if (!query) {
+    return res.status(400).json({ error: 'Missing query parameter' });
+  }
+  try {
+    const photoUrl = await fetchPlacePhoto(query);
+    if (!photoUrl) {
+      return res.status(404).json({ error: 'No photo found' });
+    }
+    res.json({ photoUrl });
+  } catch (err) {
+    console.error('Error in /api/place-photo:', err.message);
+    res.status(500).json({ error: 'Failed to fetch photo' });
+  }
+});
+
+// Mount Mapbox directions proxy
+app.use('/api', mapboxDirectionsProxy);
 
 const PORT = process.env.PORT || 4242;
 app.listen(PORT, () => {
