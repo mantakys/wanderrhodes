@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import Logo from "../components/ui/Logo";
 import LocationCard from "../components/LocationCard";
 import { motion, AnimatePresence } from "framer-motion";
-import { Copy, BookMarked, ArrowLeft, Send, Sparkles } from "lucide-react";
+import { Copy, BookMarked, ArrowLeft, Send, Sparkles, Thermometer, SunMedium, MapPin } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { isPaid } from "@/utils/auth";
@@ -147,6 +147,10 @@ export default function ChatPage() {
   const [planSaved, setPlanSaved] = useState(false);
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [planName, setPlanName] = useState('');
+  const [startTime, setStartTime] = useState(null);
+  const [companions, setCompanions] = useState(null);
+  const [extraDetails, setExtraDetails] = useState("");
+  const [showRightNow, setShowRightNow] = useState(false);
 
   const freeRemaining = Math.max(FREE_LIMIT - replyCount, 0);
 
@@ -211,7 +215,7 @@ export default function ChatPage() {
 
   const sanitize = (str) => str.replace(/<\/?[^>]+(>|$)/g, "");
 
-  const handleSend = async (overrideText) => {
+  const handleSend = async (overrideText, silent=false) => {
     if (trialExpired) {
       navigate("/paywall");
       return;
@@ -234,10 +238,12 @@ export default function ChatPage() {
     setLastSent(now);
     setIsTyping(true);
 
-    setMessages((m) => [
-      ...m,
-      { sender: "user", type: "text", message: text, time: new Date(), blur: false }
-    ]);
+    if(!silent){
+      setMessages((m) => [
+        ...m,
+        { sender: "user", type: "text", message: text, time: new Date(), blur: false }
+      ]);
+    }
 
     try {
       const history = messages.map((m) => ({
@@ -332,8 +338,31 @@ export default function ChatPage() {
   // If user hasn't configured the plan yet, show configuration overlay
   if (!planConfig) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#1a1f3d] via-[#242b50] to-transparent p-6 text-[#F4E1C1] relative">
-        <Logo className="h-10 mb-6" />
+      <div
+        className="h-screen flex flex-col items-center justify-center p-6 text-[#F4E1C1] relative"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(20,24,48,0.85), rgba(20,24,48,0.85)), url('/assets/secret-beach.jpg')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        {/* Back button */}
+        <button
+          onClick={() => navigate('/')}
+          className="absolute top-4 left-4 p-2 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md"
+          title="Back to Home"
+        >
+          <ArrowLeft className="w-5 h-5 text-white" />
+        </button>
+
+        {/* Centered clickable logo */}
+        <button
+          onClick={() => navigate('/')}
+          className="absolute top-4 left-1/2 -translate-x-1/2 focus:outline-none"
+        >
+          <Logo className="text-3xl whitespace-nowrap" />
+        </button>
 
         <h2 className="text-2xl font-semibold mb-4">Plan preferences</h2>
 
@@ -344,12 +373,23 @@ export default function ChatPage() {
               localStorage.setItem('wr_plan_config', JSON.stringify(cfg));
             } catch {}
             // Compose a single-line instruction for the assistant
-            let intro = `Here are my preferences: pace: ${cfg.pace}, water activities: ${cfg.waterActivities}, transport: ${cfg.transport}, start time: ${cfg.startTime}.`;
+            const prefsPairs = Object.entries(cfg).filter(([_, v]) => {
+              if (Array.isArray(v)) return v.length > 0;
+              return v != null && v !== '';
+            });
+            let intro =
+              'Here are my preferences: ' +
+              prefsPairs
+                .map(([k, v]) =>
+                  `${k}: ${Array.isArray(v) ? v.join(', ') : v}`,
+                )
+                .join(', ') +
+              '.';
             if (cfg.extraDetails && cfg.extraDetails.trim()) {
               intro += ` Additional details: ${cfg.extraDetails.trim()}.`;
             }
-            intro += " Please tailor the plan accordingly.";
-            handleSend(intro); // automatically send
+            intro += ' Please tailor the plan accordingly.';
+            handleSend(intro, true); // send silently
           }}
         />
         <Toaster />
@@ -359,28 +399,30 @@ export default function ChatPage() {
 
   return (
     <div
-      className="h-screen overflow-hidden flex flex-col bg-gradient-to-b from-[#1a1f3d] via-[#242b50] to-transparent"
+      className="h-screen overflow-hidden flex flex-col"
       style={{
-        backgroundImage: "url('/sea-bg.png')",
-        backgroundSize: "cover",
-        backgroundPosition: "center"
+        backgroundImage:
+          "linear-gradient(rgba(20,24,48,0.7), rgba(20,24,48,0.9)), url('/assets/secret-beach.jpg')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
       }}
     >
       {/* HEADER */}
       <header className="flex items-center justify-between p-4 bg-black/20 backdrop-blur-sm border-b border-white/10 shrink-0">
         {/* left group: back & logo */}
         <div className="flex items-center gap-2">
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => navigate("/")}
-            className="p-2 rounded-full hover:bg-white/10"
-            title="Back"
-          >
+          <button onClick={() => navigate('/')} className="focus:outline-none p-2 rounded-full hover:bg-white/10">
             <ArrowLeft className="text-white/80" />
-          </motion.button>
-          <Logo className="h-6 whitespace-nowrap" />
+          </button>
         </div>
+
+        {/* centered logo */}
+        <button
+          onClick={() => navigate('/')}
+          className="absolute left-1/2 -translate-x-1/2 focus:outline-none"
+        >
+          <Logo className="text-3xl whitespace-nowrap" />
+        </button>
 
         {/* right buttons */}
         <div className="flex gap-2 items-center">
@@ -390,13 +432,6 @@ export default function ChatPage() {
             title="My Plans"
           >
             <BookMarked size={18} color="#F4E1C1" />
-          </button>
-          <button
-            onClick={handleCopyTranscript}
-            className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition"
-            title="Copy transcript"
-          >
-            <Copy size={18} color="#F4E1C1" />
           </button>
         </div>
       </header>
@@ -449,7 +484,7 @@ export default function ChatPage() {
           );
         })}
         </AnimatePresence>
-        {isTyping && <TypingBubble />}
+        {isTyping && <AiLoadingAnimation />}
         <div ref={chatEndRef} />
       </div>
 
@@ -460,27 +495,6 @@ export default function ChatPage() {
         transition={{ type: "spring", stiffness: 100 }}
         className="p-4 bg-black/30 backdrop-blur-md"
       >
-        {/* suggestions (always visible if you have free prompts) */}
-        {!trialExpired && freeRemaining > 0 && messages.length <= 1 && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-3 space-y-2"
-          >
-            {SUGGESTIONS.map((s, i) => (
-              <motion.button
-                key={i}
-                whileHover={{ scale: 1.02 }}
-                onClick={() => handleSend(s)}
-                className="w-full text-left rounded-xl px-4 py-3 bg-white/5 border border-white/10 text-[#F4E1C1] font-medium backdrop-blur-sm shadow-sm hover:bg-white/10 transition text-sm flex items-center gap-3"
-              >
-                <Sparkles className="w-4 h-4 text-[#E8D5A4] shrink-0" />
-                {s}
-              </motion.button>
-            ))}
-          </motion.div>
-        )}
-
         {/* save plan button */}
         {currentPlan && !planSaved && (
           <div className="flex justify-center mb-2">
@@ -499,15 +513,23 @@ export default function ChatPage() {
           </div>
         )}
 
-        {/* free-prompts pill */}
-        <div className="flex justify-center mb-2">
-          <div className="px-3 py-1 text-xs font-semibold rounded-full border border-white/20 bg-black/20 text-white/70">
+        {/* free-prompts + right-now pill */}
+        <div className="flex justify-center gap-2 mb-2">
+          <div className="px-3 py-1 text-xs font-semibold rounded-full border border-white/20 bg-black/20 text-white/70 backdrop-blur-sm">
             {trialExpired
               ? "Free plan used – upgrade for unlimited access"
               : freeRemaining > 0
                 ? `${freeRemaining} free ${freeRemaining !== 1 ? "prompts" : "prompt"} left`
                 : "Upgrade for unlimited access"}
           </div>
+
+          {/* Right Now pill */}
+          <button
+            onClick={() => setShowRightNow(true)}
+            className="flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full border border-white/20 bg-white/5 text-white/80 backdrop-blur-sm hover:bg-white/10 transition"
+          >
+            <SunMedium className="w-3 h-3" /> Right&nbsp;Now
+          </button>
         </div>
 
         {/* input bar */}
@@ -558,34 +580,88 @@ export default function ChatPage() {
 
       {/* dialog JSX after footer */}
       <Dialog open={showNameDialog} onOpenChange={setShowNameDialog}>
-        <DialogContent className="bg-[#1a1f3d] text-[#F4E1C1] border border-white/10">
-          <DialogHeader>
-            <DialogTitle>Save travel plan</DialogTitle>
-          </DialogHeader>
-          <input
-            value={planName}
-            onChange={(e)=>setPlanName(e.target.value)}
-            className="w-full mt-4 p-2 rounded-md bg-black/30 border border-white/20 placeholder:text-white/50 outline-none"
-            placeholder="Travel plan name"
-          />
-          <DialogFooter className="mt-6">
-            <Button
-              onClick={()=>{
-                import('@/utils/plans').then(({ savePlan })=>{
-                  const ok = savePlan({ ...currentPlan, title: planName || currentPlan.title, chatHistory: messages });
-                  if(ok){
-                    setPlanSaved(true);
-                    setShowNameDialog(false);
-                    try { sessionStorage.removeItem('wr_current_plan'); } catch {}
-                    toast({ title: 'Plan saved!' });
-                  } else { navigate('/paywall'); }
-                })
-              }}
-            >Save</Button>
-            <DialogClose asChild>
-              <Button variant="secondary">Cancel</Button>
-            </DialogClose>
-          </DialogFooter>
+        <DialogContent className="bg-[#181c2c] text-[#F4E1C1] border border-yellow-400/20 shadow-2xl rounded-2xl p-0 overflow-hidden max-w-md">
+          <div className="flex flex-col items-center px-8 py-8">
+            <div className="mb-3 text-4xl">📝</div>
+            <DialogHeader className="w-full text-center mb-2">
+              <DialogTitle className="text-2xl font-extrabold bg-gradient-to-r from-yellow-300 via-orange-400 to-red-400 bg-clip-text text-transparent drop-shadow">Name Your Plan</DialogTitle>
+              <div className="text-sm text-white/70 mt-2 font-medium">Give your saved itinerary a name so you can find it later.</div>
+            </DialogHeader>
+            <input
+              value={planName}
+              onChange={(e)=>setPlanName(e.target.value)}
+              className="w-full mt-6 px-4 py-3 rounded-xl bg-white/10 border border-yellow-400/20 text-lg text-white placeholder:text-white/50 outline-none focus:ring-2 focus:ring-yellow-400/40 transition"
+              placeholder="e.g. South Coast Adventure"
+              maxLength={40}
+              autoFocus
+            />
+            <DialogFooter className="mt-8 w-full flex gap-3 justify-center">
+              <Button
+                className="w-1/2 py-3 rounded-full bg-gradient-to-r from-yellow-400 to-orange-400 text-[#242b50] font-bold text-base shadow-lg hover:from-orange-400 hover:to-yellow-400 transition"
+                onClick={() => {
+                  import('@/utils/plans').then(({ savePlan }) => {
+                    const ok = savePlan({ ...currentPlan, title: planName || currentPlan.title, chatHistory: messages });
+                    if (ok) {
+                      setPlanSaved(true);
+                      setShowNameDialog(false);
+                      try { sessionStorage.removeItem('wr_current_plan'); } catch { }
+                      toast({ title: 'Plan saved!' });
+                    } else { navigate('/paywall'); }
+                  })
+                }}
+              >Save</Button>
+              <DialogClose asChild>
+                <Button variant="secondary" className="w-1/2 py-3 rounded-full bg-white/10 text-white border border-white/20 font-bold text-base hover:bg-white/20 transition">Cancel</Button>
+              </DialogClose>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Right Now dialog */}
+      <Dialog open={showRightNow} onOpenChange={setShowRightNow}>
+        <DialogContent className="backdrop-blur-lg bg-white/5 border border-white/10 p-0 max-w-xs rounded-2xl text-white">
+          <div className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold">Right Now in Rhodes</h2>
+              <button onClick={() => setShowRightNow(false)} className="text-white/70 hover:text-white">✕</button>
+            </div>
+
+            {/* Temperature card */}
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-white/10">
+              <Thermometer className="text-red-400 w-4 h-4" />
+              <div className="text-sm">33°C&nbsp; <span className="text-xs opacity-70">• 01:36 PM</span></div>
+            </div>
+
+            {/* suggestion list */}
+            <div className="space-y-2 text-sm">
+              <div className="p-3 rounded-lg bg-white/5 flex items-start gap-2">
+                <Thermometer className="text-red-400 w-4 h-4 mt-0.5" />
+                <div>
+                  <div className="font-semibold">Beat the Heat</div>
+                  <div className="text-xs text-white/80">Shady spots & cool breaks for 33°C weather.</div>
+                </div>
+              </div>
+              <div className="p-3 rounded-lg bg-white/5 flex items-start gap-2">
+                <SunMedium className="text-yellow-300 w-4 h-4 mt-0.5" />
+                <div>
+                  <div className="font-semibold">Lunch Time Locals</div>
+                  <div className="text-xs text-white/80">Where Greeks actually eat lunch (not tourist traps).</div>
+                </div>
+              </div>
+              <div className="p-3 rounded-lg bg-white/5 flex items-start gap-2">
+                <MapPin className="text-cyan-300 w-4 h-4 mt-0.5" />
+                <div>
+                  <div className="font-semibold">What's Around Me</div>
+                  <div className="text-xs text-white/80">Hidden gems within walking distance.</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-center text-[10px] text-white/60 pt-2">
+              Suggestions update based on weather, time, and your location
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
@@ -643,33 +719,44 @@ function ChatBubble({ sender, message, time, blur }) {
   );
 }
 
-const TypingBubble = () => (
-  <motion.div
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0 }}
-    className="flex items-center space-x-1.5"
-  >
-    <div
-      className="h-2 w-2 bg-[#F4E1C1] rounded-full"
-      style={{ animation: "bounce 1s infinite" }}
-    />
-    <div
-      className="h-2 w-2 bg-[#F4E1C1] rounded-full"
-      style={{ animation: "bounce 1s infinite 0.2s" }}
-    />
-    <div
-      className="h-2 w-2 bg-[#F4E1C1] rounded-full"
-      style={{ animation: "bounce 1s infinite 0.4s" }}
-    />
-    <style>{`
-      @keyframes bounce {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-6px); }
-      }
-    `}</style>
-  </motion.div>
+const LOADING_ICONS = ['🏖️', '🌊', '🏔️', '☀️', '🗺️'];
+const LOADING_TEXTS = [
+  'Finding hidden beaches…',
+  'Listening to waves…',
+  'Climbing up viewpoints…',
+  'Soaking up sunshine…',
+  'Plotting your route…',
+];
+
+function AiLoadingAnimation() {
+  const [step, setStep] = React.useState(0);
+
+  React.useEffect(() => {
+    const id = setInterval(() => {
+      setStep((s) => (s + 1) % LOADING_ICONS.length);
+    }, 1600);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div className="flex flex-col items-center justify-center my-4 space-y-2">
+      <motion.span
+        key={step}
+        initial={{ scale: 0, rotate: -90, opacity: 0 }}
+        animate={{ scale: 1.2, rotate: 0, opacity: 1 }}
+        exit={{ scale: 0, rotate: 90, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 150, damping: 12 }}
+        className="text-4xl"
+      >
+        {LOADING_ICONS[step]}
+      </motion.span>
+      <p className="text-xs text-white/70 font-medium">
+        {LOADING_TEXTS[step]}
+      </p>
+      <p className="text-[10px] text-white/50">Hang tight while we craft your perfect Rhodes experience…</p>
+    </div>
   );
+}
 
 // ---------------- PlanConfigurator component ----------------
 function PlanConfigurator({ onSubmit }) {
@@ -677,28 +764,35 @@ function PlanConfigurator({ onSubmit }) {
   const [waterActivities, setWaterActivities] = useState(null);
   const [transport, setTransport] = useState(null);
   const [startTime, setStartTime] = useState(null);
+  const [companions, setCompanions] = useState(null);
   const [extraDetails, setExtraDetails] = useState("");
 
-  const isReady = pace && waterActivities !== null && transport && startTime;
+  const isReady = Boolean(pace || waterActivities !== null || transport || startTime || companions);
 
-  const buttonBase =
-    "px-4 py-2 rounded-full border border-[#F4E1C120] backdrop-blur-md text-sm font-medium focus:outline-none";
+  const pillBase =
+    "px-4 py-2 rounded-full border border-white/20 text-xs md:text-sm font-semibold transition-colors";
+
+  const selectedPill = "bg-gradient-to-r from-yellow-400 to-orange-500 text-[#242b50] shadow-lg";
+  const unselectedPill = "bg-white/10 text-white/80 hover:bg-white/20";
 
   return (
-    <div className="w-full max-w-md space-y-6">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+      className="w-full max-w-md mx-auto backdrop-blur-lg bg-white/5 border border-white/10 rounded-2xl p-6 space-y-6 shadow-2xl"
+    >
       {/* Pace */}
-      <div>
-        <h3 className="font-semibold mb-2">Pace</h3>
-        <div className="flex gap-2">
+      <div className="space-y-2 text-left">
+        <h3 className="text-base font-semibold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">🏃‍♂️ Pace</h3>
+        <div className="flex flex-wrap gap-2 justify-center">
           {[
-            { label: "Fast-Paced", value: "fast" },
-            { label: "Relaxed", value: "relaxed" },
+            { label: 'Fast-Paced', value: 'fast' },
+            { label: 'Relaxed', value: 'relaxed' },
           ].map((opt) => (
             <button
               key={opt.value}
-              className={`${buttonBase} ${
-                pace === opt.value ? "bg-[#E8D5A4] text-[#242b50]" : "bg-white/10 text-[#F4E1C1]"
-              }`}
+              className={`${pillBase} ${pace === opt.value ? selectedPill : unselectedPill}`}
               onClick={() => setPace(opt.value)}
             >
               {opt.label}
@@ -707,19 +801,17 @@ function PlanConfigurator({ onSubmit }) {
         </div>
       </div>
 
-      {/* Water activities */}
-      <div>
-        <h3 className="font-semibold mb-2">Water Activities</h3>
-        <div className="flex gap-2">
+      {/* Water Activities */}
+      <div className="space-y-2 text-left">
+        <h3 className="text-base font-semibold bg-gradient-to-r from-teal-300 to-cyan-400 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">🏖️ Water Fun</h3>
+        <div className="flex flex-wrap gap-2 justify-center">
           {[
-            { label: "Yes", value: "yes" },
-            { label: "No", value: "no" },
+            { label: 'Yes', value: 'yes' },
+            { label: 'No', value: 'no' },
           ].map((opt) => (
             <button
               key={opt.value}
-              className={`${buttonBase} ${
-                waterActivities === opt.value ? "bg-[#E8D5A4] text-[#242b50]" : "bg-white/10 text-[#F4E1C1]"
-              }`}
+              className={`${pillBase} ${waterActivities === opt.value ? selectedPill : unselectedPill}`}
               onClick={() => setWaterActivities(opt.value)}
             >
               {opt.label}
@@ -729,18 +821,16 @@ function PlanConfigurator({ onSubmit }) {
       </div>
 
       {/* Transport */}
-      <div>
-        <h3 className="font-semibold mb-2">Transport</h3>
-        <div className="flex gap-2">
+      <div className="space-y-2 text-left">
+        <h3 className="text-base font-semibold bg-gradient-to-r from-rose-400 to-pink-500 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">🚗 Transport</h3>
+        <div className="flex flex-wrap gap-2 justify-center">
           {[
-            { label: "Car", value: "car" },
-            { label: "Public", value: "public" },
+            { label: 'Car', value: 'car' },
+            { label: 'Public', value: 'public' },
           ].map((opt) => (
             <button
               key={opt.value}
-              className={`${buttonBase} ${
-                transport === opt.value ? "bg-[#E8D5A4] text-[#242b50]" : "bg-white/10 text-[#F4E1C1]"
-              }`}
+              className={`${pillBase} ${transport === opt.value ? selectedPill : unselectedPill}`}
               onClick={() => setTransport(opt.value)}
             >
               {opt.label}
@@ -750,20 +840,13 @@ function PlanConfigurator({ onSubmit }) {
       </div>
 
       {/* Start Time */}
-      <div>
-        <h3 className="font-semibold mb-2">Start Time</h3>
-        <div className="flex gap-2">
-          {[
-            "08:00",
-            "09:00",
-            "10:00",
-            "11:00",
-          ].map((time) => (
+      <div className="space-y-2 text-left">
+        <h3 className="text-base font-semibold bg-gradient-to-r from-purple-400 to-violet-500 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">⏰ Start Time</h3>
+        <div className="flex flex-wrap gap-2 justify-center">
+          {['08:00', '09:00', '10:00', '11:00'].map((time) => (
             <button
               key={time}
-              className={`${buttonBase} ${
-                startTime === time ? "bg-[#E8D5A4] text-[#242b50]" : "bg-white/10 text-[#F4E1C1]"
-              }`}
+              className={`${pillBase} ${startTime === time ? selectedPill : unselectedPill}`}
               onClick={() => setStartTime(time)}
             >
               {time}
@@ -772,31 +855,42 @@ function PlanConfigurator({ onSubmit }) {
         </div>
       </div>
 
-      {/* Additional personalisation (optional) */}
-      <div>
-        <h3 className="font-semibold mb-2">Additional Details <span className="text-xs text-[#888faa]">(optional)</span></h3>
+      {/* Companions */}
+      <div className="space-y-2 text-left">
+        <h3 className="text-base font-semibold bg-gradient-to-r from-green-300 to-lime-400 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">🧑‍🤝‍🧑 Who's Coming?</h3>
+        <div className="flex flex-wrap gap-2 justify-center">
+          {[{label:'Solo',value:'solo'},{label:'Couple',value:'couple'},{label:'Family',value:'family'}].map(opt=> (
+            <button key={opt.value} className={`${pillBase} ${companions===opt.value?selectedPill:unselectedPill}`} onClick={()=>setCompanions(opt.value)}>{opt.label}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Additional Details */}
+      <div className="space-y-2 text-left">
+        <h3 className="text-sm font-semibold bg-gradient-to-r from-fuchsia-400 to-pink-500 bg-clip-text text-transparent uppercase tracking-wide">
+          📝 Extra Notes <span className="text-xs text-white/60 normal-case">(optional)</span>
+        </h3>
         <textarea
           value={extraDetails}
           onChange={(e) => setExtraDetails(e.target.value)}
           rows={3}
-          placeholder="e.g. I love historical sites and local tavernas"
-          className="w-full rounded-lg px-4 py-2 bg-white/10 text-[#F4E1C1] placeholder:text-[#888faa] focus:outline-none resize-none"
+          placeholder="e.g. Where can i hit the penjamin?"
+          className="w-full rounded-lg px-4 py-2 bg-white/10 text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-yellow-400/60 resize-none"
         />
       </div>
 
-      <button
+      <motion.button
+        whileHover={isReady ? { scale: 1.03 } : {}}
         disabled={!isReady}
-        onClick={() =>
-          onSubmit({ pace, waterActivities, transport, startTime, extraDetails })
-        }
-        className={`w-full py-3 rounded-full text-sm font-semibold mt-2 transition ${
+        onClick={() => onSubmit({ pace, waterActivities, transport, startTime, companions, extraDetails })}
+        className={`w-full py-3 rounded-full text-sm font-bold uppercase tracking-wide transition-colors ${
           isReady
-            ? "bg-gradient-to-r from-[#E8D5A4] to-[#CAB17B] text-[#242b50] hover:from-[#CAB17B] hover:to-[#E8D5A4]"
-            : "bg-gray-600 text-gray-300 cursor-not-allowed"
+            ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-[#242b50] shadow-lg'
+            : 'bg-white/10 text-white/40 cursor-not-allowed'
         }`}
       >
-        Start Planning
-      </button>
-    </div>
+        Plan My Day ✨
+      </motion.button>
+    </motion.div>
   );
 }

@@ -4,7 +4,7 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { getNearbyPlaces, getTravelTime } from './tools/maps.js';
+import { getNearbyPlaces, getTravelTime } from './tools/mapbox.js';
 import Ajv from 'ajv';
 
 const execFileAsync = promisify(execFile);

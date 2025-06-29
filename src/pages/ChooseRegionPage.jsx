@@ -49,7 +49,7 @@ const ChooseRegionPage = () => {
         transition={{ delay: 0.2, duration: 0.5 }}
         className="text-4xl md:text-5xl font-bold mb-2 text-slate-100"
       >
-        Reveal what’s hidden
+        Reveal what's hidden
       </motion.h1>
       <motion.p 
         initial={{ y: -20, opacity: 0 }}

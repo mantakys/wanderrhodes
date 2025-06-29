@@ -38,17 +38,25 @@ export default function PaywallPage() {
 
     setIsUnlocking(true);
 
-    const fetchPromise = fetch('http://localhost:4242/api/create-checkout-session', {
+    const fetchPromise = fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     })
-      .then((res) => res.json())
+      .then(async (res) => {
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`Server ${res.status}: ${text}`);
+        }
+        return res.json();
+      })
       .then((data) => {
+        if (!data?.clientSecret) throw new Error('No clientSecret returned');
         setClientSecret(data.clientSecret);
         return data.clientSecret;
       })
       .catch((err) => {
         console.error('Stripe Checkout Error:', err);
+        alert('Payment server error — please try again later.');
         setIsUnlocking(false);
         return null;
       });

@@ -3,9 +3,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import chatHandler from './chatHandler.js';
-import { getPlacePhoto } from './tools/google.js';
 import Stripe from 'stripe';
-import axios from 'axios';
+import mapboxDirectionsProxy from './tools/mapboxDirectionsProxy.js';
 
 dotenv.config();
 
@@ -38,25 +37,8 @@ console.log('ℹ️ Return URL:', `${DOMAIN}/return?session_id={CHECKOUT_SESSION
 // Mount the same handler as used by the serverless function
 app.post('/api/chat', chatHandler);
 
-app.get('/api/place-photo', async (req, res) => {
-  const { query } = req.query;
-
-  if (!query) {
-    return res.status(400).json({ error: 'Query parameter is required' });
-  }
-
-  try {
-    const placeData = await getPlacePhoto(query);
-    if (placeData) {
-      res.json(placeData);
-    } else {
-      res.status(404).json({ error: 'Photo not found for the given query' });
-    }
-  } catch (error) {
-    console.error('Error fetching place photo:', error);
-    res.status(500).json({ error: 'Failed to fetch place photo' });
-  }
-});
+// Mount Mapbox directions proxy
+app.use('/api', mapboxDirectionsProxy);
 
 // ----------------- Stripe Endpoints -----------------
 

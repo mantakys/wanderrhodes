@@ -3,13 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import Logo from '@/components/ui/Logo';
 import { getSavedPlans, deletePlan } from '@/utils/plans';
 import LocationCard from '@/components/LocationCard';
+import { ArrowLeft } from 'lucide-react';
 
 export default function TravelPlansPage() {
   const [plans, setPlans] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
-    setPlans(getSavedPlans());
+    const stored = getSavedPlans();
+
+    setPlans(stored);
   }, []);
 
   const handleDelete = (timestamp) => {
@@ -18,20 +21,20 @@ export default function TravelPlansPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#1a1f3d] via-[#242b50] to-transparent text-[#F4E1C1] flex flex-col">
+    <div className="min-h-screen flex flex-col text-[#F4E1C1]" style={{backgroundImage:"linear-gradient(rgba(20,24,48,0.8), rgba(20,24,48,0.9)), url('/assets/secret-beach.jpg')",backgroundSize:'cover',backgroundPosition:'center'}}>
       {/* Header */}
-      <header className="sticky top-0 bg-[#1a1f3d] py-3 px-4 grid grid-cols-3 items-center z-50">
+      <header className="relative py-3 px-4 bg-black/40 backdrop-blur-lg border-b border-white/10 flex items-center justify-between">
         <button
           onClick={() => navigate(-1)}
-          className="justify-self-start w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition"
+          className="p-2 rounded-full hover:bg-white/10 transition"
         >
-          <svg width={20} height={20} viewBox="0 0 20 20" fill="none">
-            <path d="M13.5 17L7.5 10L13.5 3" stroke="#F4E1C1" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <ArrowLeft className="text-white/80" />
         </button>
-        <button onClick={() => navigate('/')} className="justify-self-center flex items-center group">
-          <Logo className="h-6 group-hover:opacity-90 transition" />
+
+        <button onClick={() => navigate('/')} className="absolute left-1/2 -translate-x-1/2 focus:outline-none">
+          <Logo className="text-3xl whitespace-nowrap" />
         </button>
+
         <div className="w-8" />
       </header>
 
@@ -54,11 +57,11 @@ function PlanItem({ plan, onDelete }) {
   const { title, timestamp, locations } = plan;
 
   return (
-    <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-lg p-4">
+    <div className="bg-white/5 backdrop-blur-lg border border-white/15 rounded-2xl p-4 shadow-lg hover:shadow-xl transition">
       <div className="flex justify-between items-center" onClick={() => setExpanded((e) => !e)}>
         <div>
-          <h3 className="font-semibold text-[#E8D5A4]">{title || 'Travel Plan'}</h3>
-          <p className="text-xs opacity-70">{new Date(timestamp).toLocaleString()}</p>
+          <h3 className="font-bold text-lg text-yellow-400">{title || 'Travel Plan'}</h3>
+          <p className="text-xs text-white/70">{new Date(timestamp).toLocaleString()}</p>
         </div>
         <div className="flex gap-3 items-center">
           <button
@@ -66,7 +69,7 @@ function PlanItem({ plan, onDelete }) {
               e.stopPropagation();
               navigate(`/plans/${timestamp}`);
             }}
-            className="text-[#E8D5A4] text-sm hover:underline"
+            className="px-3 py-1 text-[10px] font-semibold rounded-full bg-white/10 hover:bg-white/20 transition"
           >
             View
           </button>
@@ -75,7 +78,7 @@ function PlanItem({ plan, onDelete }) {
               e.stopPropagation();
               navigate(`/chat?plan=${timestamp}`);
             }}
-            className="text-[#E8D5A4] text-sm hover:underline"
+            className="px-3 py-1 text-[10px] font-semibold rounded-full bg-white/10 hover:bg-white/20 transition"
           >
             Chat
           </button>
@@ -84,7 +87,7 @@ function PlanItem({ plan, onDelete }) {
               e.stopPropagation();
               onDelete();
             }}
-            className="text-red-400 text-sm hover:underline"
+            className="px-3 py-1 text-[10px] font-semibold rounded-full bg-red-500/20 text-red-300 hover:bg-red-500/40 transition"
           >
             Delete
           </button>
