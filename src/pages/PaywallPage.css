@@ -1,9 +1,133 @@
-/* Custom styles for the Stripe Embedded Checkout */
-#checkout .stripe-checkout {
-    border-radius: 0.75rem; /* 12px */
-    overflow: hidden;
-  }
-  
-  #checkout .stripe-checkout iframe {
-      border-radius: 0.75rem !important; /* 12px */
-  } 
+.paywall-container {
+  height: 100vh;
+  max-width: 500px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: url('/sea-bg.png') center/cover no-repeat;
+  color: white;
+  /* overflow: hidden; */    /* ← removed */
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  gap: 1rem;
+}
+
+.back-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 50%;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.card {
+  width: 100%;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 2rem;
+  /* overflow: hidden; */    /* ← removed */
+}
+
+.carousel .slide {
+  position: relative;
+}
+
+.carousel img {
+  width: 100%;
+  height: 12rem;
+  object-fit: cover;
+}
+
+.gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+}
+
+.caption {
+  position: absolute;
+  bottom: 0.5rem;
+  width: 100%;
+  text-align: center;
+  padding: 0 0.5rem;
+  font-size: 0.875rem;
+}
+
+.details {
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.details h1 {
+  font-size: 1.75rem;
+  background: linear-gradient(90deg, #f97316, #eab308);
+  -webkit-background-clip: text;
+  color: transparent;
+  margin-bottom: 1rem;
+}
+
+.features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+
+.features li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.icon.locked   { color: rgba(255,255,255,0.4); }
+.icon.unlocked { color: #4ade80; }
+
+.cta-btn {
+  width: 100%;
+  padding: 0.75rem;
+  font-weight: bold;
+  border-radius: 0.75rem;
+  background: linear-gradient(90deg, #f97316, #eab308);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.cta-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.small {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.5);
+}
+
+/* Checkout wrapper */
+.checkout-wrapper {
+  padding: 1.5rem;
+  text-align: center;
+}
+
+/* The actual embedded Checkout iframe */
+.embedded-checkout {
+  width: 100%;
+  height: 600px;
+  overflow: visible; /* allow Stripe's fixed iframe to show */
+}

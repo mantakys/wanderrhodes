@@ -3,11 +3,13 @@ import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Logo from "../components/ui/Logo";
 import LocationCard from "../components/LocationCard";
+import AgentStatusIndicator from "../components/ui/AgentStatusIndicator";
+import TravelPreferences from "../components/ui/TravelPreferences";
+import PlanEditor from "../components/ui/PlanEditor";
 import { motion, AnimatePresence } from "framer-motion";
-import { Copy, BookMarked, ArrowLeft, Send, Sparkles } from "lucide-react";
+import { Copy, BookMarked, ArrowLeft, Send, Sparkles, Thermometer, SunMedium, MapPin, Settings, Edit } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import { isPaid } from "@/utils/auth";
 import { getSavedPlans, canSaveAnotherPlan } from '@/utils/plans';
 import {
   Dialog,
@@ -18,6 +20,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { useUser } from '@/components/ThemeProvider';
 
 const SUGGESTIONS = [
   "Where should I eat tonight in Faliraki?",
@@ -33,31 +36,82 @@ const parseAiResponse = (reply, structuredData, blur) => {
   const newMessages = [];
   const locations = structuredData?.locations || [];
 
+  // Check for interactive markers
+  const interactiveMarkers = {
+    preferences: reply.match(/\|\|\|PREFERENCES\|\|\|([^|]*)\|\|\|/),
+    editPlan: reply.includes('|||EDIT_PLAN|||'),
+    locationOptions: reply.match(/\|\|\|LOCATION_OPTIONS\|\|\|([^|]*)\|\|\|/),
+    question: reply.match(/\|\|\|QUESTION\|\|\|([^|]*)\|\|\|/)
+  };
+
+  // Remove interactive markers from text for display
+  let cleanReply = reply
+    .replace(/\|\|\|PREFERENCES\|\|\|[^|]*\|\|\|/g, '')
+    .replace(/\|\|\|EDIT_PLAN\|\|\|/g, '')
+    .replace(/\|\|\|LOCATION_OPTIONS\|\|\|[^|]*\|\|\|/g, '')
+    .replace(/\|\|\|QUESTION\|\|\|[^|]*\|\|\|/g, '');
+
+  // Handle responses without locations
   if (!locations.length) {
-    if (reply.trim()) {
-      newMessages.push({
+    if (cleanReply.trim()) {
+      const message = {
         sender: 'ai',
         type: 'text',
-        message: reply.trim(),
+        message: cleanReply.trim(),
         time: new Date(),
         blur: blur,
-      });
+        interactive: interactiveMarkers
+      };
+      newMessages.push(message);
     }
     return newMessages;
   }
 
-  const textParts = reply.split('|||LOCATION|||');
+  // Handle responses with locations
+  const textParts = cleanReply.split('|||LOCATION|||');
 
+  // If no location markers found but we have locations, add text first then all locations
+  if (textParts.length === 1 && locations.length > 0) {
+    // Add the text message first
+    if (cleanReply.trim()) {
+      const message = {
+        sender: 'ai',
+        type: 'text',
+        message: cleanReply.trim(),
+        time: new Date(),
+        blur: blur,
+        interactive: interactiveMarkers
+      };
+      newMessages.push(message);
+    }
+    
+    // Add all location cards
+    locations.forEach(location => {
+      newMessages.push({
+        sender: 'ai',
+        type: 'location',
+        locationData: location,
+        time: new Date(),
+        blur: blur,
+      });
+    });
+    
+    return newMessages;
+  }
+
+  // Handle responses with location markers (existing logic)
   textParts.forEach((text, i) => {
     const trimmedText = text.trim();
     if (trimmedText) {
-      newMessages.push({
+      const message = {
         sender: 'ai',
         type: 'text',
         message: trimmedText,
         time: new Date(),
         blur: blur,
-      });
+        interactive: i === 0 ? interactiveMarkers : {} // Only add to first message
+      };
+      newMessages.push(message);
     }
     if (locations[i]) {
       newMessages.push({
@@ -82,20 +136,29 @@ export default function ChatPage() {
 
   const [searchParams] = useSearchParams();
   const planId = searchParams.get('plan');
+  const isNewPlan = searchParams.get('new') === 'true';
+
+  const { user, loading, refreshUser } = useUser();
 
   // Initialize replyCount based on how many AI responses already exist (useful when loading from a saved plan)
   const initialMessages = (() => {
     if (typeof window === 'undefined') return [];
 
-    if (planId) {
-      try {
-        const plans = getSavedPlans();
-        const plan = plans.find((p) => String(p.timestamp) === String(planId));
-        if (plan && plan.chatHistory) {
-          return plan.chatHistory.map((m) => ({ ...m, time: new Date(m.time) }));
-        }
-      } catch {}
+    // If this is a new plan, start with just the greeting
+    if (isNewPlan) {
+      return [
+        {
+          sender: 'ai',
+          type: 'text',
+          message: "Hi! Ready to plan your perfect Rhodes adventure? Let's start by setting up your preferences!",
+          time: new Date(),
+          blur: false,
+        },
+      ];
     }
+
+    // Plan-specific chat history will be loaded asynchronously in useEffect
+    // since getSavedPlans is now async
 
     try {
       const raw = localStorage.getItem('wr_chat_history');
@@ -126,8 +189,15 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [lastSent, setLastSent] = useState(0);
+  const [abortController, setAbortController] = useState(null);
   const [planConfig, setPlanConfig] = useState(() => {
     if (typeof window === 'undefined') return null;
+    
+    // If this is a new plan, force plan configuration
+    if (isNewPlan) {
+      return null;
+    }
+    
     try {
       const raw = localStorage.getItem('wr_plan_config');
       return raw ? JSON.parse(raw) : null;
@@ -147,11 +217,31 @@ export default function ChatPage() {
   const [planSaved, setPlanSaved] = useState(false);
   const [showNameDialog, setShowNameDialog] = useState(false);
   const [planName, setPlanName] = useState('');
+  const [startTime, setStartTime] = useState(null);
+  const [companions, setCompanions] = useState(null);
+  const [extraDetails, setExtraDetails] = useState("");
+  const [showRightNow, setShowRightNow] = useState(false);
+  
+  // Interactive elements state
+  const [showPreferences, setShowPreferences] = useState(false);
+  const [userPreferences, setUserPreferences] = useState(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      const raw = localStorage.getItem('wr_user_preferences');
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  });
+  const [showPlanEditor, setShowPlanEditor] = useState(false);
+  const [editablePlan, setEditablePlan] = useState([]);
+  const [lastResponse, setLastResponse] = useState(null);
 
   const freeRemaining = Math.max(FREE_LIMIT - replyCount, 0);
 
-  // Determine if the overall trial (single free plan) has expired
-  const trialExpired = !isPaid() && !canSaveAnotherPlan();
+  // Determine if the overall trial has expired
+  // For paid users: trial never expires (unlimited access)
+  // For unauthenticated users: trial expires when they've used up free messages
+  // For authenticated but unpaid users: trial expires when they've used up free messages
+  const trialExpired = user?.has_paid ? false : (replyCount >= FREE_LIMIT);
 
   // auto-scroll
   useEffect(() => {
@@ -209,15 +299,164 @@ export default function ChatPage() {
     };
   }, []);
 
-  const sanitize = (str) => str.replace(/<\/?[^>]+(>|$)/g, "");
+  // Load plan-specific chat history if planId is provided
+  useEffect(() => {
+    if (planId && user) {
+      async function loadPlanChatHistory() {
+        try {
+          const plans = await getSavedPlans(user);
+          const plan = plans.find((p) => 
+            String(p.id) === String(planId) || String(p.timestamp) === String(planId)
+          );
+          
+          if (plan) {
+            // Handle both backend and localStorage format
+            const planData = plan.data || plan;
+            if (planData.chatHistory) {
+              setMessages(planData.chatHistory.map((m) => ({ ...m, time: new Date(m.time) })));
+              const aiCount = planData.chatHistory.filter((m) => m.sender === 'ai').length;
+              setReplyCount(Math.max(0, aiCount - 1));
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load plan chat history:', error);
+        }
+      }
+      
+      loadPlanChatHistory();
+    }
+  }, [planId, user]);
 
-  const handleSend = async (overrideText) => {
-    if (trialExpired) {
-      navigate("/paywall");
-      return;
+  // Clean up abort controller on unmount
+  useEffect(() => {
+    return () => {
+      if (abortController) {
+        abortController.abort();
+      }
+    };
+  }, [abortController]);
+
+  // Warn user before leaving page during agent processing
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (isTyping) {
+        e.preventDefault();
+        e.returnValue = 'The AI is currently thinking. Are you sure you want to leave?';
+        return 'The AI is currently thinking. Are you sure you want to leave?';
+      }
+    };
+
+    const handlePopState = (e) => {
+      if (isTyping) {
+        const confirmed = window.confirm('The AI is currently thinking. Are you sure you want to leave?');
+        if (!confirmed) {
+          e.preventDefault();
+          window.history.pushState(null, '', window.location.pathname);
+        }
+      }
+    };
+
+    if (isTyping) {
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      window.addEventListener('popstate', handlePopState);
     }
 
-    if (replyCount > FREE_LIMIT) {
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isTyping]);
+
+  // Clear the 'new' parameter from URL after component loads
+  useEffect(() => {
+    if (isNewPlan) {
+      const newUrl = new URL(window.location);
+      newUrl.searchParams.delete('new');
+      window.history.replaceState({}, '', newUrl.toString());
+    }
+  }, [isNewPlan]);
+
+  const sanitize = (str) => str.replace(/<\/?[^>]+(>|$)/g, "");
+
+  // Interactive functionality handlers
+  const handlePreferencesUpdate = (preferences) => {
+    setUserPreferences(preferences);
+    localStorage.setItem('wr_user_preferences', JSON.stringify(preferences));
+  };
+
+  const handlePreferencesComplete = (preferences) => {
+    if (preferences) {
+      handlePreferencesUpdate(preferences);
+      setShowPreferences(false);
+      
+      // Create preference summary and continue conversation
+      const prefSummary = `I've updated my preferences: 
+        Budget: ${preferences.budget}, 
+        Interests: ${preferences.interests?.join(', ')}, 
+        Time preferences: ${preferences.timeOfDay?.join(', ')}, 
+        Group: ${preferences.groupSize}. 
+        Please update my travel plan based on these preferences.`;
+      
+      handleSend(prefSummary, true);
+    } else {
+      setShowPreferences(false);
+    }
+  };
+
+  const handlePlanEdit = (locations) => {
+    const currentLocations = messages
+      .filter(m => m.type === 'location')
+      .map(m => m.locationData);
+    
+    setEditablePlan(currentLocations);
+    setShowPlanEditor(true);
+  };
+
+  const handlePlanSave = (updatedLocations) => {
+    // Update the messages to reflect the new plan
+    const newMessages = [...messages];
+    let locationIndex = 0;
+    
+    const updatedMessages = newMessages.map(message => {
+      if (message.type === 'location') {
+        if (locationIndex < updatedLocations.length) {
+          return {
+            ...message,
+            locationData: updatedLocations[locationIndex++]
+          };
+        } else {
+          return null; // Remove extra locations
+        }
+      }
+      return message;
+    }).filter(Boolean);
+
+    // Add any new locations that weren't in the original messages
+    while (locationIndex < updatedLocations.length) {
+      updatedMessages.push({
+        sender: 'ai',
+        type: 'location',
+        locationData: updatedLocations[locationIndex],
+        time: new Date(),
+        blur: false
+      });
+      locationIndex++;
+    }
+
+    setMessages(updatedMessages);
+    setShowPlanEditor(false);
+    
+    toast({
+      title: "Plan Updated",
+      description: "Your travel plan has been successfully updated.",
+    });
+  };
+
+  // Configuration for using the agentic framework
+  const USE_AGENT_FRAMEWORK = localStorage.getItem('wr_use_agent') === 'true' || false;
+
+  const handleSend = async (overrideText, silent=false) => {
+    if (trialExpired) {
       navigate("/paywall");
       return;
     }
@@ -228,29 +467,58 @@ export default function ChatPage() {
     const text = overrideText != null ? overrideText : sanitize(input).trim();
     if (!text || text.length > 500) return;
 
-    if (replyCount === FREE_LIMIT) setBlurNext(true);
+    if (replyCount === FREE_LIMIT && !user?.has_paid) setBlurNext(true);
 
     setInput("");
     setLastSent(now);
     setIsTyping(true);
 
-    setMessages((m) => [
-      ...m,
-      { sender: "user", type: "text", message: text, time: new Date(), blur: false }
-    ]);
+    // Cancel any existing request
+    if (abortController) {
+      abortController.abort();
+    }
+
+    // Create new abort controller for this request
+    const controller = new AbortController();
+    setAbortController(controller);
+
+    if(!silent){
+      setMessages((m) => [
+        ...m,
+        { sender: "user", type: "text", message: text, time: new Date(), blur: false }
+      ]);
+    }
 
     try {
       const history = messages.map((m) => ({
         role: m.sender === "user" ? "user" : "assistant",
         content: m.message
       }));
-      const endpoint = "/api/chat"; // proxy handles dev -> backend
+      
+      // Choose endpoint based on configuration
+      const endpoint = USE_AGENT_FRAMEWORK ? "/api/agent" : "/api/chat";
+      
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ history, prompt: text, userLocation })
+        body: JSON.stringify({ 
+          history, 
+          prompt: text, 
+          userLocation,
+          userPreferences 
+        }),
+        signal: controller.signal
       });
       const { reply = "(no reply)", structuredData = null } = await res.json();
+
+      // Log agent metadata if available
+      if (structuredData?.metadata?.agentState) {
+        console.log('🤖 Agent Execution Details:', {
+          state: structuredData.metadata.agentState,
+          toolsUsed: structuredData.metadata.toolsUsed,
+          intermediateSteps: structuredData.metadata.intermediateSteps
+        });
+      }
 
       const newAiMessages = parseAiResponse(reply, structuredData, blurNext);
 
@@ -278,24 +546,41 @@ export default function ChatPage() {
           title: text.substring(0, 60),
           locations: structuredData.locations,
           timestamp: Date.now(),
+          // Store agent metadata if available
+          agentMetadata: structuredData.metadata || {}
         };
         setCurrentPlan(planObj);
         try { sessionStorage.setItem('wr_current_plan', JSON.stringify(planObj)); } catch {}
         setPlanSaved(false);
-      }
-    } catch {
-      setMessages((m) => [
-        ...m,
-        {
-          sender: "ai",
-          type: "text",
-          message: "Sorry, something went wrong.",
-          time: new Date(),
-          blur: false
+        
+        // Show save reminder for new plans
+        if (isNewPlan && user?.has_paid) {
+          setTimeout(() => {
+            toast({
+              title: "Your travel plan is ready! 🎉",
+              description: "Don't forget to save it so you can access it anytime during your trip.",
+              duration: 6000,
+            });
+          }, 2000);
         }
-      ]);
+      }
+    } catch (error) {
+      // Don't show error message if request was aborted (user navigated away)
+      if (error.name !== 'AbortError') {
+        setMessages((m) => [
+          ...m,
+          {
+            sender: "ai",
+            type: "text",
+            message: "Sorry, something went wrong.",
+            time: new Date(),
+            blur: false
+          }
+        ]);
+      }
     } finally {
       setIsTyping(false);
+      setAbortController(null);
     }
   };
 
@@ -332,10 +617,41 @@ export default function ChatPage() {
   // If user hasn't configured the plan yet, show configuration overlay
   if (!planConfig) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#1a1f3d] via-[#242b50] to-transparent p-6 text-[#F4E1C1] relative">
-        <Logo className="h-10 mb-6" />
+      <div
+        className="h-screen flex flex-col items-center justify-center p-6 text-[#F4E1C1] relative"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(20,24,48,0.85), rgba(20,24,48,0.85)), url('/assets/secret-beach.jpg')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        {/* Back button */}
+        <button
+          onClick={() => navigate('/')}
+          className="absolute top-4 left-4 p-2 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-md"
+          title="Back to Home"
+        >
+          <ArrowLeft className="w-5 h-5 text-white" />
+        </button>
 
-        <h2 className="text-2xl font-semibold mb-4">Plan preferences</h2>
+        {/* Centered clickable logo */}
+        <button
+          onClick={() => navigate('/')}
+          className="absolute top-4 left-1/2 -translate-x-1/2 focus:outline-none"
+        >
+          <Logo className="text-3xl whitespace-nowrap" />
+        </button>
+
+        <h2 className="text-2xl font-semibold mb-4">
+          {user?.has_paid && isNewPlan ? 'Create New Travel Plan' : 'Plan preferences'}
+        </h2>
+        
+        {user?.has_paid && isNewPlan && (
+          <p className="text-white/80 text-center mb-4 text-sm">
+            Set your preferences to create a personalized Rhodes travel plan that you can save and revisit anytime.
+          </p>
+        )}
 
         <PlanConfigurator
           onSubmit={(cfg) => {
@@ -344,12 +660,26 @@ export default function ChatPage() {
               localStorage.setItem('wr_plan_config', JSON.stringify(cfg));
             } catch {}
             // Compose a single-line instruction for the assistant
-            let intro = `Here are my preferences: pace: ${cfg.pace}, water activities: ${cfg.waterActivities}, transport: ${cfg.transport}, start time: ${cfg.startTime}.`;
+            const prefsPairs = Object.entries(cfg).filter(([_, v]) => {
+              if (Array.isArray(v)) return v.length > 0;
+              return v != null && v !== '';
+            });
+            let intro = isNewPlan && user?.has_paid
+              ? 'I want to create a new travel plan for Rhodes with these preferences: '
+              : 'Here are my preferences: ';
+            intro += prefsPairs
+                .map(([k, v]) =>
+                  `${k}: ${Array.isArray(v) ? v.join(', ') : v}`,
+                )
+                .join(', ') +
+              '.';
             if (cfg.extraDetails && cfg.extraDetails.trim()) {
               intro += ` Additional details: ${cfg.extraDetails.trim()}.`;
             }
-            intro += " Please tailor the plan accordingly.";
-            handleSend(intro); // automatically send
+            intro += isNewPlan && user?.has_paid 
+              ? ' Please create a detailed day plan that I can save for my trip.'
+              : ' Please tailor the plan accordingly.';
+            handleSend(intro, true); // send silently
           }}
         />
         <Toaster />
@@ -359,44 +689,53 @@ export default function ChatPage() {
 
   return (
     <div
-      className="h-screen overflow-hidden flex flex-col bg-gradient-to-b from-[#1a1f3d] via-[#242b50] to-transparent"
+      className="h-screen overflow-hidden flex flex-col"
       style={{
-        backgroundImage: "url('/sea-bg.png')",
-        backgroundSize: "cover",
-        backgroundPosition: "center"
+        backgroundImage:
+          "linear-gradient(rgba(20,24,48,0.7), rgba(20,24,48,0.9)), url('/assets/secret-beach.jpg')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
       }}
     >
       {/* HEADER */}
       <header className="flex items-center justify-between p-4 bg-black/20 backdrop-blur-sm border-b border-white/10 shrink-0">
         {/* left group: back & logo */}
         <div className="flex items-center gap-2">
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => navigate("/")}
-            className="p-2 rounded-full hover:bg-white/10"
-            title="Back"
-          >
+          <button onClick={() => navigate('/')} className="focus:outline-none p-2 rounded-full hover:bg-white/10">
             <ArrowLeft className="text-white/80" />
-          </motion.button>
-          <Logo className="h-6 whitespace-nowrap" />
+          </button>
         </div>
+
+        {/* centered logo */}
+        <button
+          onClick={() => navigate('/')}
+          className="absolute left-1/2 -translate-x-1/2 focus:outline-none"
+        >
+          <Logo className="text-3xl whitespace-nowrap" />
+        </button>
 
         {/* right buttons */}
         <div className="flex gap-2 items-center">
           <button
-            onClick={() => navigate('/plans')}
-            className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition"
-            title="My Plans"
+            onClick={() => {
+              if (isTyping) {
+                const confirmed = window.confirm('The AI is currently thinking. Are you sure you want to leave?');
+                if (!confirmed) return;
+                if (abortController) {
+                  abortController.abort();
+                }
+              }
+              navigate('/plans');
+            }}
+            disabled={isTyping}
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition ${
+              isTyping 
+                ? 'opacity-50 cursor-not-allowed' 
+                : 'hover:bg-white/10 cursor-pointer'
+            }`}
+            title={isTyping ? "AI is thinking..." : "My Plans"}
           >
             <BookMarked size={18} color="#F4E1C1" />
-          </button>
-          <button
-            onClick={handleCopyTranscript}
-            className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition"
-            title="Copy transcript"
-          >
-            <Copy size={18} color="#F4E1C1" />
           </button>
         </div>
       </header>
@@ -417,6 +756,13 @@ export default function ChatPage() {
                   exit={{ opacity: 0, y: -20 }}
                   className={`relative flex justify-start my-1 ${m.blur ? 'blur-sm' : ''}`}
                 >
+                {/* Show agent status for location responses */}
+                {i === messages.length - 1 && USE_AGENT_FRAMEWORK && (
+                  <AgentStatusIndicator 
+                    isAgentMode={USE_AGENT_FRAMEWORK}
+                    agentMetadata={currentPlan?.agentMetadata}
+                  />
+                )}
                 <div className="max-w-[75%]">
                   <LocationCard location={m.locationData} />
                 </div>
@@ -444,12 +790,15 @@ export default function ChatPage() {
               message={m.message}
               time={m.time}
               blur={m.blur}
+              interactive={m.interactive}
+              onPreferencesRequest={() => setShowPreferences(true)}
+              onPlanEdit={() => handlePlanEdit()}
             />
               </motion.div>
           );
         })}
         </AnimatePresence>
-        {isTyping && <TypingBubble />}
+        {isTyping && <AiLoadingAnimation />}
         <div ref={chatEndRef} />
       </div>
 
@@ -460,54 +809,57 @@ export default function ChatPage() {
         transition={{ type: "spring", stiffness: 100 }}
         className="p-4 bg-black/30 backdrop-blur-md"
       >
-        {/* suggestions (always visible if you have free prompts) */}
-        {!trialExpired && freeRemaining > 0 && messages.length <= 1 && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-3 space-y-2"
-          >
-            {SUGGESTIONS.map((s, i) => (
-              <motion.button
-                key={i}
-                whileHover={{ scale: 1.02 }}
-                onClick={() => handleSend(s)}
-                className="w-full text-left rounded-xl px-4 py-3 bg-white/5 border border-white/10 text-[#F4E1C1] font-medium backdrop-blur-sm shadow-sm hover:bg-white/10 transition text-sm flex items-center gap-3"
-              >
-                <Sparkles className="w-4 h-4 text-[#E8D5A4] shrink-0" />
-                {s}
-              </motion.button>
-            ))}
-          </motion.div>
-        )}
-
         {/* save plan button */}
         {currentPlan && !planSaved && (
           <div className="flex justify-center mb-2">
             <button
-              onClick={() => {
-                import('@/utils/plans').then(({ canSaveAnotherPlan }) => {
-                  if (!canSaveAnotherPlan()) { navigate('/paywall'); return; }
-                  setPlanName(`Travel plan #${Date.now().toString().slice(-5)}`);
+              onClick={async () => {
+                try {
+                  const { canSaveAnotherPlan } = await import('@/utils/plans');
+                  // If user is not paid and has already used their free plan, redirect to paywall
+                  if (!user?.has_paid && !(await canSaveAnotherPlan(user))) { 
+                    navigate('/paywall'); 
+                    return; 
+                  }
+                  setPlanName(`${isNewPlan ? 'Rhodes Adventure' : 'Travel plan'} #${Date.now().toString().slice(-5)}`);
                   setShowNameDialog(true);
-                });
+                } catch (error) {
+                  console.error('Failed to check plan quota:', error);
+                  // Fallback - show dialog anyway
+                  setPlanName(`${isNewPlan ? 'Rhodes Adventure' : 'Travel plan'} #${Date.now().toString().slice(-5)}`);
+                  setShowNameDialog(true);
+                }
               }}
-              className="px-4 py-1 rounded-full text-xs font-semibold bg-[#E8D5A4] text-[#242b50] hover:bg-[#CAB17B] transition"
+              className={`px-6 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${
+                isNewPlan 
+                  ? 'bg-gradient-to-r from-green-500 to-teal-500 text-white shadow-lg hover:shadow-xl hover:scale-105' 
+                  : 'bg-[#E8D5A4] text-[#242b50] hover:bg-[#CAB17B]'
+              }`}
             >
-              Save this plan
+              {isNewPlan ? '💾 Save Your New Plan' : 'Save this plan'}
             </button>
           </div>
         )}
 
-        {/* free-prompts pill */}
-        <div className="flex justify-center mb-2">
-          <div className="px-3 py-1 text-xs font-semibold rounded-full border border-white/20 bg-black/20 text-white/70">
-            {trialExpired
-              ? "Free plan used – upgrade for unlimited access"
-              : freeRemaining > 0
-                ? `${freeRemaining} free ${freeRemaining !== 1 ? "prompts" : "prompt"} left`
-                : "Upgrade for unlimited access"}
+        {/* free-prompts + right-now pill */}
+        <div className="flex justify-center gap-2 mb-2">
+          <div className="px-3 py-1 text-xs font-semibold rounded-full border border-white/20 bg-black/20 text-white/70 backdrop-blur-sm">
+            {user?.has_paid
+              ? "Unlimited access ✨"
+              : trialExpired
+                ? "Free plan used – upgrade for unlimited access"
+                : freeRemaining > 0
+                  ? `${freeRemaining} free ${freeRemaining !== 1 ? "prompts" : "prompt"} left`
+                  : "Upgrade for unlimited access"}
           </div>
+
+          {/* Right Now pill */}
+          <button
+            onClick={() => setShowRightNow(true)}
+            className="flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full border border-white/20 bg-white/5 text-white/80 backdrop-blur-sm hover:bg-white/10 transition"
+          >
+            <SunMedium className="w-3 h-3" /> Right&nbsp;Now
+          </button>
         </div>
 
         {/* input bar */}
@@ -526,10 +878,14 @@ export default function ChatPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={
-              freeRemaining > 0 ? "Ask anything about Rhodes…" : "Upgrade to continue"
+              user?.has_paid 
+                ? "Ask anything about Rhodes…" 
+                : freeRemaining > 0 
+                  ? "Ask anything about Rhodes…" 
+                  : "Upgrade to continue"
             }
             disabled={isTyping}
-            className="flex-1 rounded-full px-4 py-2 bg-[#1a1f3d] text-white placeholder:text-[#888faa] outline-none shadow-inner text-sm"
+            className="flex-1 rounded-full px-4 py-3 bg-[#1a1f3d] text-white placeholder:text-[#888faa] outline-none shadow-inner text-sm"
           />
             <motion.button
               type="submit"
@@ -558,41 +914,131 @@ export default function ChatPage() {
 
       {/* dialog JSX after footer */}
       <Dialog open={showNameDialog} onOpenChange={setShowNameDialog}>
-        <DialogContent className="bg-[#1a1f3d] text-[#F4E1C1] border border-white/10">
-          <DialogHeader>
-            <DialogTitle>Save travel plan</DialogTitle>
-          </DialogHeader>
-          <input
-            value={planName}
-            onChange={(e)=>setPlanName(e.target.value)}
-            className="w-full mt-4 p-2 rounded-md bg-black/30 border border-white/20 placeholder:text-white/50 outline-none"
-            placeholder="Travel plan name"
-          />
-          <DialogFooter className="mt-6">
-            <Button
-              onClick={()=>{
-                import('@/utils/plans').then(({ savePlan })=>{
-                  const ok = savePlan({ ...currentPlan, title: planName || currentPlan.title, chatHistory: messages });
-                  if(ok){
-                    setPlanSaved(true);
-                    setShowNameDialog(false);
-                    try { sessionStorage.removeItem('wr_current_plan'); } catch {}
-                    toast({ title: 'Plan saved!' });
-                  } else { navigate('/paywall'); }
-                })
-              }}
-            >Save</Button>
-            <DialogClose asChild>
-              <Button variant="secondary">Cancel</Button>
-            </DialogClose>
-          </DialogFooter>
+        <DialogContent className="bg-[#181c2c] text-[#F4E1C1] border border-yellow-400/20 shadow-2xl rounded-2xl p-0 overflow-hidden max-w-md">
+          <div className="flex flex-col items-center px-8 py-8">
+            <div className="mb-3 text-4xl">📝</div>
+            <DialogHeader className="w-full text-center mb-2">
+              <DialogTitle className="text-2xl font-extrabold bg-gradient-to-r from-yellow-300 via-orange-400 to-red-400 bg-clip-text text-transparent drop-shadow">Name Your Plan</DialogTitle>
+              <div className="text-sm text-white/70 mt-2 font-medium">Give your saved itinerary a name so you can find it later.</div>
+            </DialogHeader>
+            <input
+              value={planName}
+              onChange={(e)=>setPlanName(e.target.value)}
+              className="w-full mt-6 px-4 py-3 rounded-xl bg-white/10 border border-yellow-400/20 text-lg text-white placeholder:text-white/50 outline-none focus:ring-2 focus:ring-yellow-400/40 transition"
+              placeholder="e.g. South Coast Adventure"
+              maxLength={40}
+              autoFocus
+            />
+            <DialogFooter className="mt-8 w-full flex gap-3 justify-center">
+              <Button
+                className="w-1/2 py-3 rounded-full bg-gradient-to-r from-yellow-400 to-orange-400 text-[#242b50] font-bold text-base shadow-lg hover:from-orange-400 hover:to-yellow-400 transition"
+                onClick={async () => {
+                  try {
+                    const { savePlan } = await import('@/utils/plans');
+                    const ok = await savePlan({ ...currentPlan, title: planName || currentPlan.title, chatHistory: messages }, user);
+                    if (ok) {
+                      setPlanSaved(true);
+                      setShowNameDialog(false);
+                      try { sessionStorage.removeItem('wr_current_plan'); } catch { }
+                      toast({ title: 'Plan saved!' });
+                    } else { 
+                      navigate('/paywall'); 
+                    }
+                  } catch (error) {
+                    console.error('Failed to save plan:', error);
+                    toast({ title: 'Failed to save plan', description: 'Please try again', variant: 'destructive' });
+                  }
+                }}
+              >Save</Button>
+              <DialogClose asChild>
+                <Button variant="secondary" className="w-1/2 py-3 rounded-full bg-white/10 text-white border border-white/20 font-bold text-base hover:bg-white/20 transition">Cancel</Button>
+              </DialogClose>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
+
+      {/* Right Now dialog */}
+      <Dialog open={showRightNow} onOpenChange={setShowRightNow}>
+        <DialogContent className="backdrop-blur-lg bg-white/5 border border-white/10 p-0 max-w-xs rounded-2xl text-white">
+          <div className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold">Right Now in Rhodes</h2>
+              <button onClick={() => setShowRightNow(false)} className="text-white/70 hover:text-white">✕</button>
+            </div>
+
+            {/* Temperature card */}
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-white/10">
+              <Thermometer className="text-red-400 w-4 h-4" />
+              <div className="text-sm">33°C&nbsp; <span className="text-xs opacity-70">• 01:36 PM</span></div>
+            </div>
+
+            {/* suggestion list */}
+            <div className="space-y-2 text-sm">
+              <div className="p-3 rounded-lg bg-white/5 flex items-start gap-2">
+                <Thermometer className="text-red-400 w-4 h-4 mt-0.5" />
+                <div>
+                  <div className="font-semibold">Beat the Heat</div>
+                  <div className="text-xs text-white/80">Shady spots & cool breaks for 33°C weather.</div>
+                </div>
+              </div>
+              <div className="p-3 rounded-lg bg-white/5 flex items-start gap-2">
+                <SunMedium className="text-yellow-300 w-4 h-4 mt-0.5" />
+                <div>
+                  <div className="font-semibold">Lunch Time Locals</div>
+                  <div className="text-xs text-white/80">Where Greeks actually eat lunch (not tourist traps).</div>
+                </div>
+              </div>
+              <div className="p-3 rounded-lg bg-white/5 flex items-start gap-2">
+                <MapPin className="text-cyan-300 w-4 h-4 mt-0.5" />
+                <div>
+                  <div className="font-semibold">What's Around Me</div>
+                  <div className="text-xs text-white/80">Hidden gems within walking distance.</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-center text-[10px] text-white/60 pt-2">
+              Suggestions update based on weather, time, and your location
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Interactive Components */}
+      <AnimatePresence>
+        {showPreferences && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto"
+          >
+            <div className="min-h-full flex items-center justify-center p-4">
+              <TravelPreferences
+                initialPreferences={userPreferences}
+                onPreferencesUpdate={handlePreferencesUpdate}
+                onComplete={handlePreferencesComplete}
+              />
+            </div>
+          </motion.div>
+        )}
+
+        {showPlanEditor && (
+          <PlanEditor
+            locations={editablePlan}
+            preferences={userPreferences}
+            onUpdate={(locations) => setEditablePlan(locations)}
+            onSave={handlePlanSave}
+            onClose={() => setShowPlanEditor(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function ChatBubble({ sender, message, time, blur }) {
+function ChatBubble({ sender, message, time, blur, interactive = {}, onPreferencesRequest, onPlanEdit }) {
   const isUser = sender === "user";
   const navigate = useNavigate();
 
@@ -625,6 +1071,31 @@ function ChatBubble({ sender, message, time, blur }) {
         }}
       >
         <p className="text-sm whitespace-pre-wrap">{message}</p>
+        
+        {/* Interactive Elements */}
+        {!isUser && (interactive?.preferences || interactive?.editPlan) && (
+          <div className="flex gap-2 mt-3 pt-2 border-t border-white/10">
+            {interactive.preferences && (
+              <button
+                onClick={onPreferencesRequest}
+                className="flex items-center gap-1 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs hover:bg-blue-500/30 transition-colors"
+              >
+                <Settings size={12} />
+                Set Preferences
+              </button>
+            )}
+            {interactive.editPlan && (
+              <button
+                onClick={onPlanEdit}
+                className="flex items-center gap-1 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs hover:bg-purple-500/30 transition-colors"
+              >
+                <Edit size={12} />
+                Edit Plan
+              </button>
+            )}
+          </div>
+        )}
+        
         <div className="text-xs text-right mt-2 opacity-60">
           {formatTime(time)}
         </div>
@@ -643,33 +1114,44 @@ function ChatBubble({ sender, message, time, blur }) {
   );
 }
 
-const TypingBubble = () => (
-  <motion.div
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0 }}
-    className="flex items-center space-x-1.5"
-  >
-    <div
-      className="h-2 w-2 bg-[#F4E1C1] rounded-full"
-      style={{ animation: "bounce 1s infinite" }}
-    />
-    <div
-      className="h-2 w-2 bg-[#F4E1C1] rounded-full"
-      style={{ animation: "bounce 1s infinite 0.2s" }}
-    />
-    <div
-      className="h-2 w-2 bg-[#F4E1C1] rounded-full"
-      style={{ animation: "bounce 1s infinite 0.4s" }}
-    />
-    <style>{`
-      @keyframes bounce {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-6px); }
-      }
-    `}</style>
-  </motion.div>
+const LOADING_ICONS = ['🏖️', '🌊', '🏔️', '☀️', '🗺️'];
+const LOADING_TEXTS = [
+  'Finding hidden beaches…',
+  'Listening to waves…',
+  'Climbing up viewpoints…',
+  'Soaking up sunshine…',
+  'Plotting your route…',
+];
+
+function AiLoadingAnimation() {
+  const [step, setStep] = React.useState(0);
+
+  React.useEffect(() => {
+    const id = setInterval(() => {
+      setStep((s) => (s + 1) % LOADING_ICONS.length);
+    }, 1600);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div className="flex flex-col items-center justify-center my-4 space-y-2">
+      <motion.span
+        key={step}
+        initial={{ scale: 0, rotate: -90, opacity: 0 }}
+        animate={{ scale: 1.2, rotate: 0, opacity: 1 }}
+        exit={{ scale: 0, rotate: 90, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 150, damping: 12 }}
+        className="text-4xl"
+      >
+        {LOADING_ICONS[step]}
+      </motion.span>
+      <p className="text-xs text-white/70 font-medium">
+        {LOADING_TEXTS[step]}
+      </p>
+      <p className="text-[10px] text-white/50">Hang tight while we craft your perfect Rhodes experience…</p>
+    </div>
   );
+}
 
 // ---------------- PlanConfigurator component ----------------
 function PlanConfigurator({ onSubmit }) {
@@ -677,28 +1159,35 @@ function PlanConfigurator({ onSubmit }) {
   const [waterActivities, setWaterActivities] = useState(null);
   const [transport, setTransport] = useState(null);
   const [startTime, setStartTime] = useState(null);
+  const [companions, setCompanions] = useState(null);
   const [extraDetails, setExtraDetails] = useState("");
 
-  const isReady = pace && waterActivities !== null && transport && startTime;
+  const isReady = Boolean(pace || waterActivities !== null || transport || startTime || companions);
 
-  const buttonBase =
-    "px-4 py-2 rounded-full border border-[#F4E1C120] backdrop-blur-md text-sm font-medium focus:outline-none";
+  const pillBase =
+    "px-4 py-2 rounded-full border border-white/20 text-xs md:text-sm font-semibold transition-colors";
+
+  const selectedPill = "bg-gradient-to-r from-yellow-400 to-orange-500 text-[#242b50] shadow-lg";
+  const unselectedPill = "bg-white/10 text-white/80 hover:bg-white/20";
 
   return (
-    <div className="w-full max-w-md space-y-6">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+      className="w-full max-w-md mx-auto backdrop-blur-lg bg-white/5 border border-white/10 rounded-2xl p-6 space-y-6 shadow-2xl"
+    >
       {/* Pace */}
-      <div>
-        <h3 className="font-semibold mb-2">Pace</h3>
-        <div className="flex gap-2">
+      <div className="space-y-2 text-left">
+        <h3 className="text-base font-semibold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">🏃‍♂️ Pace</h3>
+        <div className="flex flex-wrap gap-2 justify-center">
           {[
-            { label: "Fast-Paced", value: "fast" },
-            { label: "Relaxed", value: "relaxed" },
+            { label: 'Fast-Paced', value: 'fast' },
+            { label: 'Relaxed', value: 'relaxed' },
           ].map((opt) => (
             <button
               key={opt.value}
-              className={`${buttonBase} ${
-                pace === opt.value ? "bg-[#E8D5A4] text-[#242b50]" : "bg-white/10 text-[#F4E1C1]"
-              }`}
+              className={`${pillBase} ${pace === opt.value ? selectedPill : unselectedPill}`}
               onClick={() => setPace(opt.value)}
             >
               {opt.label}
@@ -707,19 +1196,17 @@ function PlanConfigurator({ onSubmit }) {
         </div>
       </div>
 
-      {/* Water activities */}
-      <div>
-        <h3 className="font-semibold mb-2">Water Activities</h3>
-        <div className="flex gap-2">
+      {/* Water Activities */}
+      <div className="space-y-2 text-left">
+        <h3 className="text-base font-semibold bg-gradient-to-r from-teal-300 to-cyan-400 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">🏖️ Water Fun</h3>
+        <div className="flex flex-wrap gap-2 justify-center">
           {[
-            { label: "Yes", value: "yes" },
-            { label: "No", value: "no" },
+            { label: 'Yes', value: 'yes' },
+            { label: 'No', value: 'no' },
           ].map((opt) => (
             <button
               key={opt.value}
-              className={`${buttonBase} ${
-                waterActivities === opt.value ? "bg-[#E8D5A4] text-[#242b50]" : "bg-white/10 text-[#F4E1C1]"
-              }`}
+              className={`${pillBase} ${waterActivities === opt.value ? selectedPill : unselectedPill}`}
               onClick={() => setWaterActivities(opt.value)}
             >
               {opt.label}
@@ -729,18 +1216,16 @@ function PlanConfigurator({ onSubmit }) {
       </div>
 
       {/* Transport */}
-      <div>
-        <h3 className="font-semibold mb-2">Transport</h3>
-        <div className="flex gap-2">
+      <div className="space-y-2 text-left">
+        <h3 className="text-base font-semibold bg-gradient-to-r from-rose-400 to-pink-500 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">🚗 Transport</h3>
+        <div className="flex flex-wrap gap-2 justify-center">
           {[
-            { label: "Car", value: "car" },
-            { label: "Public", value: "public" },
+            { label: 'Car', value: 'car' },
+            { label: 'Public', value: 'public' },
           ].map((opt) => (
             <button
               key={opt.value}
-              className={`${buttonBase} ${
-                transport === opt.value ? "bg-[#E8D5A4] text-[#242b50]" : "bg-white/10 text-[#F4E1C1]"
-              }`}
+              className={`${pillBase} ${transport === opt.value ? selectedPill : unselectedPill}`}
               onClick={() => setTransport(opt.value)}
             >
               {opt.label}
@@ -750,20 +1235,13 @@ function PlanConfigurator({ onSubmit }) {
       </div>
 
       {/* Start Time */}
-      <div>
-        <h3 className="font-semibold mb-2">Start Time</h3>
-        <div className="flex gap-2">
-          {[
-            "08:00",
-            "09:00",
-            "10:00",
-            "11:00",
-          ].map((time) => (
+      <div className="space-y-2 text-left">
+        <h3 className="text-base font-semibold bg-gradient-to-r from-purple-400 to-violet-500 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">⏰ Start Time</h3>
+        <div className="flex flex-wrap gap-2 justify-center">
+          {['08:00', '09:00', '10:00', '11:00'].map((time) => (
             <button
               key={time}
-              className={`${buttonBase} ${
-                startTime === time ? "bg-[#E8D5A4] text-[#242b50]" : "bg-white/10 text-[#F4E1C1]"
-              }`}
+              className={`${pillBase} ${startTime === time ? selectedPill : unselectedPill}`}
               onClick={() => setStartTime(time)}
             >
               {time}
@@ -772,31 +1250,42 @@ function PlanConfigurator({ onSubmit }) {
         </div>
       </div>
 
-      {/* Additional personalisation (optional) */}
-      <div>
-        <h3 className="font-semibold mb-2">Additional Details <span className="text-xs text-[#888faa]">(optional)</span></h3>
+      {/* Companions */}
+      <div className="space-y-2 text-left">
+        <h3 className="text-base font-semibold bg-gradient-to-r from-green-300 to-lime-400 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">🧑‍🤝‍🧑 Who's Coming?</h3>
+        <div className="flex flex-wrap gap-2 justify-center">
+          {[{label:'Solo',value:'solo'},{label:'Couple',value:'couple'},{label:'Family',value:'family'}].map(opt=> (
+            <button key={opt.value} className={`${pillBase} ${companions===opt.value?selectedPill:unselectedPill}`} onClick={()=>setCompanions(opt.value)}>{opt.label}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Additional Details */}
+      <div className="space-y-2 text-left">
+        <h3 className="text-sm font-semibold bg-gradient-to-r from-fuchsia-400 to-pink-500 bg-clip-text text-transparent uppercase tracking-wide">
+          📝 Extra Notes <span className="text-xs text-white/60 normal-case">(optional)</span>
+        </h3>
         <textarea
           value={extraDetails}
           onChange={(e) => setExtraDetails(e.target.value)}
           rows={3}
-          placeholder="e.g. I love historical sites and local tavernas"
-          className="w-full rounded-lg px-4 py-2 bg-white/10 text-[#F4E1C1] placeholder:text-[#888faa] focus:outline-none resize-none"
+          placeholder="e.g. Where can i hit the penjamin?"
+          className="w-full rounded-lg px-4 py-2 bg-white/10 text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-yellow-400/60 resize-none"
         />
       </div>
 
-      <button
+      <motion.button
+        whileHover={isReady ? { scale: 1.03 } : {}}
         disabled={!isReady}
-        onClick={() =>
-          onSubmit({ pace, waterActivities, transport, startTime, extraDetails })
-        }
-        className={`w-full py-3 rounded-full text-sm font-semibold mt-2 transition ${
+        onClick={() => onSubmit({ pace, waterActivities, transport, startTime, companions, extraDetails })}
+        className={`w-full py-3 rounded-full text-sm font-bold uppercase tracking-wide transition-colors ${
           isReady
-            ? "bg-gradient-to-r from-[#E8D5A4] to-[#CAB17B] text-[#242b50] hover:from-[#CAB17B] hover:to-[#E8D5A4]"
-            : "bg-gray-600 text-gray-300 cursor-not-allowed"
+            ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-[#242b50] shadow-lg'
+            : 'bg-white/10 text-white/40 cursor-not-allowed'
         }`}
       >
-        Start Planning
-      </button>
-    </div>
+        Plan My Day ✨
+      </motion.button>
+    </motion.div>
   );
 }
