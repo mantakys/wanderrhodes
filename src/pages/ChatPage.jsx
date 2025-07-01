@@ -495,10 +495,10 @@ export default function ChatPage() {
         content: m.message
       }));
       
-      // Choose endpoint based on configuration
-      const endpoint = USE_AGENT_FRAMEWORK ? "/api/agent" : "/api/chat";
+      // Choose endpoint based on configuration with fallback
+      let endpoint = USE_AGENT_FRAMEWORK ? "/api/agent" : "/api/chat";
       
-      const res = await fetch(endpoint, {
+      let res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -509,6 +509,24 @@ export default function ChatPage() {
         }),
         signal: controller.signal
       });
+
+      // If agent endpoint fails (404/405), fallback to chat endpoint
+      if (!res.ok && USE_AGENT_FRAMEWORK && endpoint === "/api/agent") {
+        console.log('🤖 Agent endpoint not available, falling back to chat endpoint');
+        endpoint = "/api/chat";
+        res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            history, 
+            prompt: text, 
+            userLocation,
+            userPreferences 
+          }),
+          signal: controller.signal
+        });
+      }
+      
       const { reply = "(no reply)", structuredData = null } = await res.json();
 
       // Log agent metadata if available
