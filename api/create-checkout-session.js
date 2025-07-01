@@ -1,7 +1,28 @@
 import Stripe from 'stripe';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
-const DOMAIN = process.env.DOMAIN || (() => { console.error('❌ Missing DOMAIN'); throw new Error('Missing DOMAIN'); })();
+let DOMAIN = process.env.DOMAIN;
+
+// Fallback to the request origin in production if DOMAIN is not set
+if (!DOMAIN && typeof window === 'undefined') {
+  // This will be replaced per request below using req.headers
+  DOMAIN = null;
+}
+
+function sanitizeDomain(input) {
+  if (!input) return null;
+  let url = input.trim();
+  // Prepend https:// if protocol is missing
+  if (!/^https?:\/\//i.test(url)) {
+    url = `https://${url}`;
+  }
+  // Remove trailing slash
+  url = url.replace(/\/+$/, '');
+  return url;
+}
+
+// Sanitize once if we already have the env var
+DOMAIN = sanitizeDomain(DOMAIN);
 
 function pick(keyBase) {
   // For now, always use TEST keys until Vercel env vars are configured
@@ -41,13 +62,24 @@ export default async function handler(req, res) {
   try {
     console.log('🔔 POST /api/create-checkout-session');
 
+    // If DOMAIN was not provided via env, fall back to req.headers.origin
+    let baseUrl = DOMAIN;
+    if (!baseUrl) {
+      const originHeader = req.headers['origin'] || `https://${req.headers['host']}`;
+      baseUrl = sanitizeDomain(originHeader);
+    }
+
+    if (!baseUrl) {
+      throw new Error('Unable to determine base URL for success/cancel redirect');
+    }
+
     // Always use the simple redirect flow (safer for server-side environments like Vercel).
     const sessionParams = {
       mode: 'payment',
       payment_method_types: ['card'],
       line_items: [{ price: STRIPE_PRICE_ID, quantity: 1 }],
-      success_url: `${DOMAIN}/api/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${DOMAIN}/paywall`,
+      success_url: `${baseUrl}/api/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/paywall`,
     };
 
     const session = await stripe.checkout.sessions.create(sessionParams);
