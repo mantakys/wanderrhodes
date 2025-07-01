@@ -1,9 +1,7 @@
-import jwt from 'jsonwebtoken';
 import Stripe from 'stripe';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 const DOMAIN = process.env.DOMAIN || (() => { console.error('❌ Missing DOMAIN'); throw new Error('Missing DOMAIN'); })();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 function pick(keyBase) {
   // For now, always use TEST keys until Vercel env vars are configured
@@ -43,19 +41,6 @@ export default async function handler(req, res) {
   try {
     console.log('🔔 POST /api/create-checkout-session');
 
-    // Optional auth - get user email if authenticated
-    let userEmail = null;
-    const token = req.cookies?.jwt;
-    if (token) {
-      try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        userEmail = decoded.email;
-      } catch (err) {
-        // Ignore auth errors for checkout
-        console.log('No valid auth token for checkout');
-      }
-    }
-
     // Always use the simple redirect flow (safer for server-side environments like Vercel).
     const sessionParams = {
       mode: 'payment',
@@ -64,11 +49,6 @@ export default async function handler(req, res) {
       success_url: `${DOMAIN}/api/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${DOMAIN}/paywall`,
     };
-
-    // Attach customer_email only if we actually have one to avoid "Invalid email" errors.
-    if (userEmail) {
-      sessionParams.customer_email = userEmail;
-    }
 
     const session = await stripe.checkout.sessions.create(sessionParams);
     return res.json({ url: session.url });
