@@ -1,5 +1,5 @@
 import { generateMagicToken } from '../backend/auth.js';
-import { upsertUser, setMagicToken } from '../backend/db.js';
+import { upsertUser, setMagicToken } from '../backend/db-neon.js';
 import { sendMagicLink, sendSignupConfirmation } from '../backend/email.js';
 
 const IS_PROD = process.env.NODE_ENV === 'production';

@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { createJWT } from '../backend/auth.js';
-import { getUserByMagicToken, clearMagicToken } from '../backend/db.js';
+import { getUserByMagicToken, clearMagicToken } from '../backend/db-neon.js';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 

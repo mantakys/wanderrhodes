@@ -10,7 +10,18 @@ import {
   saveUserPreferences,
   getUserPreferences,
   getUserByEmail
-} from '../backend/db.js';
+} from '../backend/db-neon.js';
+import { 
+  getCachedTravelPlans, 
+  cacheTravelPlans, 
+  clearTravelPlansCache,
+  getCachedChatHistory,
+  cacheChatHistory,
+  clearChatHistoryCache,
+  getCachedUserPreferences,
+  cacheUserPreferences,
+  clearUserPreferencesCache
+} from '../backend/cache.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -58,8 +69,11 @@ export default async function handler(req, res) {
           return res.status(400).json({ error: 'Missing plan data or name' });
         }
 
-        const planId = saveTravelPlan(userId, planData, planName);
+        const planId = await saveTravelPlan(userId, planData, planName);
         console.log(`💾 Saved travel plan for user ${userAuth.email}: ${planName}`);
+        
+        // Clear cache so next request fetches fresh data
+        await clearTravelPlansCache(userId);
         
         return res.status(200).json({ 
           success: true, 
@@ -69,7 +83,15 @@ export default async function handler(req, res) {
       }
 
       case 'get_travel_plans': {
-        const plans = getUserTravelPlans(userId);
+        // Try cache first
+        let plans = await getCachedTravelPlans(userId);
+        if (!plans) {
+          // Cache miss - fetch from database
+          plans = await getUserTravelPlans(userId);
+          // Cache for future requests
+          await cacheTravelPlans(userId, plans);
+        }
+        
         console.log(`📋 Retrieved ${plans.length} travel plans for user ${userAuth.email}`);
         
         return res.status(200).json({ 
@@ -91,9 +113,11 @@ export default async function handler(req, res) {
           return res.status(400).json({ error: 'Missing plan ID' });
         }
 
-        const result = deleteTravelPlan(userId, planId);
+        const result = await deleteTravelPlan(userId, planId);
         if (result.changes > 0) {
           console.log(`🗑️ Deleted travel plan ${planId} for user ${userAuth.email}`);
+          // Clear cache so next request fetches fresh data
+          await clearTravelPlansCache(userId);
           return res.status(200).json({ success: true, message: 'Plan deleted successfully' });
         } else {
           return res.status(404).json({ error: 'Plan not found' });
@@ -106,9 +130,11 @@ export default async function handler(req, res) {
           return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        const result = updateTravelPlan(userId, planId, planData, planName);
+        const result = await updateTravelPlan(userId, planId, planData, planName);
         if (result.changes > 0) {
           console.log(`✏️ Updated travel plan ${planId} for user ${userAuth.email}`);
+          // Clear cache so next request fetches fresh data
+          await clearTravelPlansCache(userId);
           return res.status(200).json({ success: true, message: 'Plan updated successfully' });
         } else {
           return res.status(404).json({ error: 'Plan not found' });

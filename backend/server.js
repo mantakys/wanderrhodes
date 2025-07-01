@@ -27,7 +27,7 @@ import {
   clearUserChatHistory,
   saveUserPreferences,
   getUserPreferences
-} from './db.js';
+} from './db-adapter.js';
 import { sendMagicLink, sendSignupConfirmation } from './email.js';
 import { optionalAuth, requireAuth, requirePaidUser } from './middleware/auth.js';
 import { chatGuard } from './middleware/chatGuard.js';

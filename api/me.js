@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
-import { getUserByEmail } from '../backend/db.js';
+import { getUserByEmail } from '../backend/db-neon.js';
+import { getCachedUserSession, cacheUserSession } from '../backend/cache.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -17,7 +18,17 @@ export default async function handler(req, res) {
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = getUserByEmail(decoded.email);
+    
+    // Try cache first
+    let user = await getCachedUserSession(decoded.email);
+    if (!user) {
+      // Cache miss - fetch from database
+      user = await getUserByEmail(decoded.email);
+      if (user) {
+        // Cache for future requests
+        await cacheUserSession(decoded.email, user);
+      }
+    }
     
     if (!user) {
       return res.status(401).json({ error: 'User not found' });
