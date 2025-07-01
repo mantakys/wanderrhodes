@@ -78,7 +78,7 @@ export default async function handler(req, res) {
       mode: 'payment',
       payment_method_types: ['card'],
       line_items: [{ price: STRIPE_PRICE_ID, quantity: 1 }],
-      success_url: `${baseUrl}/api/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${baseUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/paywall`,
     };
 
