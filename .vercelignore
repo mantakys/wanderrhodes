@@ -1,0 +1,8 @@
+# Exclude development-only API functions from Vercel deployment
+api/dev/
+api/admin/
+api/agent.js
+
+# Exclude development files
+backend/test-agent.js
+backend/examples/ 
