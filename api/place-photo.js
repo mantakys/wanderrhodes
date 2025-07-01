@@ -1,4 +1,4 @@
-import { fetchPlacePhoto } from '../backend/tools/wikimedia.js';
+import { fetchPlacePhoto } from '../backend/tools/googlePlaces.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -11,13 +11,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const photoUrl = await fetchPlacePhoto(query);
-    if (!photoUrl) {
-      return res.status(404).json({ error: 'No photo found' });
+    const { photoUrl, placeId } = await fetchPlacePhoto(query);
+    if (!photoUrl && !placeId) {
+      return res.status(404).json({ error: 'No photo or place found' });
     }
-    res.json({ photoUrl });
+    return res.status(200).json({ photoUrl, placeId });
   } catch (err) {
     console.error('Error in /api/place-photo:', err.message);
-    res.status(500).json({ error: 'Failed to fetch photo' });
+    return res.status(500).json({ error: 'Failed to fetch photo' });
   }
 }
