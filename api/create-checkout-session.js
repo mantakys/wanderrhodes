@@ -6,13 +6,27 @@ const DOMAIN = process.env.DOMAIN || (() => { console.error('❌ Missing DOMAIN'
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 function pick(keyBase) {
-  // const keyName = IS_PROD ? `${keyBase}_PROD` : `${keyBase}_TEST`;
+  // For now, always use TEST keys until Vercel env vars are configured
   const keyName = `${keyBase}_TEST`;
-  const val = process.env[keyName];
+  let val = process.env[keyName];
+  
+  // Fallback: try without _TEST suffix
   if (!val) {
-    console.error(`❌ Missing ${keyName} in your .env`);
-    throw new Error(`Missing ${keyName}`);
+    val = process.env[keyBase];
   }
+  
+  // Fallback: try _PROD suffix as last resort
+  if (!val) {
+    val = process.env[`${keyBase}_PROD`];
+  }
+  
+  if (!val) {
+    console.error(`❌ Missing environment variable. Tried: ${keyName}, ${keyBase}, ${keyBase}_PROD`);
+    console.log('Available environment variables:', Object.keys(process.env).filter(key => key.includes('STRIPE')));
+    throw new Error(`Missing ${keyName} environment variable`);
+  }
+  
+  console.log(`✅ Using ${keyBase} from environment variable`);
   return val;
 }
 
