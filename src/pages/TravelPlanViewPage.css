@@ -5,4 +5,52 @@
   width: 14px;
   height: 14px;
   box-shadow: 0 0 4px rgba(0,0,0,0.5);
+}
+
+/* Numbered pin */
+.wr-pin {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #E8D5A4;
+  border: 2px solid #CAB17B;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #242b50;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 0 4px rgba(0,0,0,0.4);
+}
+.wr-pin-start {
+  background: #4CAF50;
+  border-color: #388E3C;
+  color: #fff;
+}
+.wr-pin-finish {
+  background: #F44336;
+  border-color: #B71C1C;
+  color: #fff;
+}
+
+/* Glassmorphism pill labels */
+.wr-pill {
+  backdrop-filter: blur(6px);
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 12px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #F4E1C1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.wr-pill-start {
+  background: rgba(76,175,80,0.3);
+  border-color: rgba(76,175,80,0.6);
+}
+.wr-pill-finish {
+  background: rgba(244,67,54,0.3);
+  border-color: rgba(244,67,54,0.6);
 } 

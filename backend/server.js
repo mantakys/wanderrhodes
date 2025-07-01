@@ -6,7 +6,13 @@ import chatHandler from './chatHandler.js';
 import Stripe from 'stripe';
 import mapboxDirectionsProxy from './tools/mapboxDirectionsProxy.js';
 
-dotenv.config();
+dotenv.config({ path: './.env' });
+console.log('Loaded MAPBOX_ACCESS_TOKEN:', process.env.MAPBOX_ACCESS_TOKEN ? 'present' : 'missing');
+if (!process.env.MAPBOX_ACCESS_TOKEN) {
+  // Hardcode for debug (remove this after fixing)
+  process.env.MAPBOX_ACCESS_TOKEN = 'pk.eyJ...your_mapbox_token_here...';
+  console.log('Hardcoded MAPBOX_ACCESS_TOKEN for debug');
+}
 
 const app = express();
 app.use(cors());
@@ -83,22 +89,6 @@ app.get('/api/session-status', async (req, res) => {
   } catch (err) {
     console.error('❌ Error fetching session:', err);
     res.status(500).json({ error: err.message || 'Unable to retrieve session' });
-  }
-});
-
-// Proxy image to avoid API key referrer issues
-app.get('/api/photo-proxy', async (req, res) => {
-  const url = req.query.url;
-  console.log('🖼️ Proxy fetching image:', url);
-  if (!url) return res.status(400).send('Missing url');
-  try {
-    const resp = await axios.get(url, { responseType: 'arraybuffer' });
-    res.set('Content-Type', resp.headers['content-type'] || 'image/jpeg');
-    res.set('Cache-Control', 'public,max-age=86400');
-    res.send(resp.data);
-  } catch (e) {
-    console.error('Photo proxy error:', e.message);
-    res.status(500).send('Failed to fetch image');
   }
 });
 

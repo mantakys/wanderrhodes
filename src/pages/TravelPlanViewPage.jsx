@@ -5,6 +5,7 @@ import './TravelPlanViewPage.css';
 import Logo from '@/components/ui/Logo';
 import { getSavedPlans } from '@/utils/plans';
 import { ArrowLeft } from 'lucide-react';
+import mapboxgl from 'mapbox-gl';
 
 // Mapbox route fetcher
 async function fetchMapboxRoute(coords) {
@@ -29,10 +30,51 @@ export default function TravelPlanViewPage() {
     latitude: 36.1,
     zoom: 10
   });
+  const [showAllMarkers, setShowAllMarkers] = useState(false);
 
   const coords = plan?.locations
     ? plan.locations.map((l) => l.location?.coordinates).filter(Boolean)
     : [];
+
+  // Calculate center of all points
+  const getCenter = (coords) => {
+    if (!coords.length) return { lng: 28.1, lat: 36.1 };
+    const lng = coords.reduce((sum, c) => sum + c.lng, 0) / coords.length;
+    const lat = coords.reduce((sum, c) => sum + c.lat, 0) / coords.length;
+    return { lng, lat };
+  };
+
+  // Calculate bounds for all points
+  const getBounds = (coords) => {
+    if (!coords.length) return null;
+    let minLng = coords[0].lng, maxLng = coords[0].lng;
+    let minLat = coords[0].lat, maxLat = coords[0].lat;
+    coords.forEach(({ lng, lat }) => {
+      if (lng < minLng) minLng = lng;
+      if (lng > maxLng) maxLng = lng;
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+    });
+    return [ [minLng, minLat], [maxLng, maxLat] ];
+  };
+
+  // Initial center for single marker
+  const center = getCenter(coords);
+
+  // Ref for map instance
+  const mapRef = React.useRef();
+
+  // On click, zoom to fit all points and show all markers
+  const handleShowPlan = () => {
+    setShowAllMarkers(true);
+    // Fit bounds
+    if (mapRef.current && coords.length > 1) {
+      const bounds = getBounds(coords);
+      if (bounds) {
+        mapRef.current.fitBounds(bounds, { padding: 80, duration: 1200 });
+      }
+    }
+  };
 
   useEffect(() => {
     const p = getSavedPlans().find((pl) => String(pl.timestamp) === id);
@@ -53,6 +95,7 @@ export default function TravelPlanViewPage() {
 
   useEffect(() => {
     if (coords.length > 1) {
+      console.log('Sending coords to directions API:', coords);
       fetchMapboxRoute(coords)
         .then(setRoute)
         .catch(e => setRouteError(e.message));
@@ -109,16 +152,32 @@ export default function TravelPlanViewPage() {
       {/* Map */}
       <div className="flex-1 h-[calc(100vh-80px)]">
         <Map
-          {...viewState}
+          {...(showAllMarkers ? viewState : { ...viewState, longitude: center.lng, latitude: center.lat })}
           onMove={evt => setViewState(evt.viewState)}
           style={{ width: '100%', height: '100%' }}
           mapStyle="mapbox://styles/mapbox/dark-v11"
           mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
+          ref={mapRef}
         >
-          {/* Markers */}
-          {plan.locations.map((loc, idx) => {
+          {/* Step 1: Show only central marker */}
+          {!showAllMarkers && coords.length > 0 && (
+            <Marker longitude={center.lng} latitude={center.lat} anchor="bottom">
+              <button
+                className="bg-[#E8D5A4] text-black px-3 py-2 rounded-lg text-sm font-bold shadow-lg border-2 border-yellow-500 hover:bg-yellow-200 transition"
+                onClick={handleShowPlan}
+                style={{ cursor: 'pointer' }}
+              >
+                Show Plan
+              </button>
+            </Marker>
+          )}
+
+          {/* Step 2: Show all markers and route */}
+          {showAllMarkers && plan.locations.map((loc, idx) => {
             const c = loc.location?.coordinates;
             if (!c) return null;
+            const isStart = idx === 0;
+            const isFinish = idx === plan.locations.length - 1;
             return (
               <Marker
                 key={idx}
@@ -126,17 +185,82 @@ export default function TravelPlanViewPage() {
                 latitude={c.lat}
                 anchor="bottom"
               >
-                <div className="bg-[#E8D5A4] text-black px-2 py-1 rounded text-xs font-bold">
-                  {loc.name}
+                <div
+                  className={`wr-pill ${isStart ? 'wr-pill-start' : isFinish ? 'wr-pill-finish' : ''}`}
+                >
+                  {isStart ? 'Start: ' : isFinish ? 'Finish: ' : ''}{loc.name.length > 20 ? loc.name.slice(0,17)+'…' : loc.name}
                 </div>
               </Marker>
             );
           })}
 
           {/* Route */}
-          {route.length > 1 && (
+          {showAllMarkers && Array.isArray(route) && route.length > 0 && route[0]?.coordinates ? (
+            route.map((segment, idx) => (
+              <Source
+                key={idx}
+                type="geojson"
+                data={{
+                  type: 'Feature',
+                  properties: {},
+                  geometry: {
+                    type: 'LineString',
+                    coordinates: segment.coordinates.map(point => [point.lng, point.lat])
+                  }
+                }}
+              >
+                <Layer
+                  id={`route-segment-${idx}`}
+                  type="line"
+                  paint={segment.durationMinutes <= 5
+                    ? {
+                        'line-color': '#2196F3',
+                        'line-width': 4,
+                        'line-dasharray': [2, 2],
+                        'line-opacity': 0.85
+                      }
+                    : {
+                        'line-color': '#1565C0',
+                        'line-width': 4,
+                        'line-opacity': 0.85
+                      }
+                  }
+                />
+              </Source>
+            ))
+          ) : showAllMarkers && route.length > 0 ? (
             <Source {...routeSource}>
               <Layer {...routeLayer} />
+            </Source>
+          ) : null}
+          {/* Debug: Show message if route is missing */}
+          {showAllMarkers && coords.length > 1 && route.length === 0 && (
+            <div className="absolute top-10 left-1/2 -translate-x-1/2 bg-red-700 text-white px-3 py-1 rounded shadow-lg z-[1000] text-xs">
+              No route found or route not loaded.{routeError ? ` (${routeError})` : ''}
+            </div>
+          )}
+          {/* Fallback: Draw straight line if route fails but coords are present */}
+          {showAllMarkers && coords.length > 1 && route.length === 0 && (
+            <Source
+              type="geojson"
+              data={{
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                  type: 'LineString',
+                  coordinates: coords.map(point => [point.lng, point.lat])
+                }
+              }}
+            >
+              <Layer
+                id="fallback-route"
+                type="line"
+                paint={{
+                  'line-color': '#ff0000',
+                  'line-width': 2,
+                  'line-opacity': 0.7
+                }}
+              />
             </Source>
           )}
         </Map>

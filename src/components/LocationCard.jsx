@@ -224,17 +224,6 @@ const LocationCard = ({ location }) => {
                     Call
                   </a>
                 )}
-                {location.location?.coordinates && (
-                  <a
-                    href={`https://www.openstreetmap.org/?mlat=${location.location.coordinates.lat}&mlon=${location.location.coordinates.lng}#map=16/${location.location.coordinates.lat}/${location.location.coordinates.lng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[#E8D5A4] hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    View on Map
-                  </a>
-                )}
               </div>
             </div>
             
