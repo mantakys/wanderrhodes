@@ -56,30 +56,22 @@ export default async function handler(req, res) {
       }
     }
 
-    if (!IS_PROD) {
-      // Redirect flow in development
-      const session = await stripe.checkout.sessions.create({
-        mode: 'payment',
-        payment_method_types: ['card'],
-        line_items: [{ price: STRIPE_PRICE_ID, quantity: 1 }],
-        success_url: `${DOMAIN}/api/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${DOMAIN}/paywall`,
-        customer_email: userEmail,
-      });
-      return res.json({ url: session.url });
-    }
-
-    // Embedded flow in production
-    const session = await stripe.checkout.sessions.create({
-      ui_mode: 'embedded',
+    // Always use the simple redirect flow (safer for server-side environments like Vercel).
+    const sessionParams = {
       mode: 'payment',
       payment_method_types: ['card'],
       line_items: [{ price: STRIPE_PRICE_ID, quantity: 1 }],
-      return_url: `${DOMAIN}/api/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      customer_email: userEmail,
-    });
-    
-    return res.json({ clientSecret: session.client_secret });
+      success_url: `${DOMAIN}/api/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${DOMAIN}/paywall`,
+    };
+
+    // Attach customer_email only if we actually have one to avoid "Invalid email" errors.
+    if (userEmail) {
+      sessionParams.customer_email = userEmail;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
+    return res.json({ url: session.url });
 
   } catch (error) {
     console.error('❌ Error creating session:', error.message);
