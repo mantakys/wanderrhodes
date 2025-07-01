@@ -5,3 +5,5 @@ google_api_key.txt
 node_modules
 .DS_Store
 
+*.sqlite-shm
+*.sqlite-wal
