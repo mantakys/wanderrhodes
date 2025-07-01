@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "start-api": "node backend/server.js",
     "test-agent": "node backend/test-agent.js",
-    "test-agent-config": "node -e \"import('./backend/config/agentConfig.js').then(m => console.log('Config status:', m.getConfigStatus()))\""
+    "test-agent-config": "node -e \"import('./backend/config/agentConfig.js').then(m => console.log('Config status:', m.getConfigStatus()))\"",
+    "migrate:neon": "node scripts/migrate-to-neon.js",
+    "setup:neon": "echo 'Add DATABASE_URL to your .env file with your Neon PostgreSQL connection string'"
   },
   "dependencies": {
     "@langchain/core": "^0.3.61",
@@ -29,6 +31,7 @@
     "@radix-ui/react-toast": "^1.1.5",
     "@stripe/react-stripe-js": "^3.7.0",
     "@stripe/stripe-js": "^7.4.0",
+    "@upstash/redis": "^1.28.4",
     "ajv": "^8.17.1",
     "axios": "^1.10.0",
     "better-sqlite3": "^9.4.3",
@@ -51,6 +54,7 @@
     "nodemailer": "^6.9.9",
     "npm": "^11.4.2",
     "openai": "^4.103.0",
+    "pg": "^8.13.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-leaflet": "^4.2.1",

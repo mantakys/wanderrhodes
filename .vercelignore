@@ -5,4 +5,11 @@ api/agent.js
 
 # Exclude development files
 backend/test-agent.js
-backend/examples/ 
+backend/examples/
+scripts/
+PRODUCTION_SETUP.md
+
+# Exclude SQLite database files
+database.sqlite
+database.sqlite-shm
+database.sqlite-wal 
