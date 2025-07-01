@@ -6,7 +6,8 @@ const DOMAIN = process.env.DOMAIN || (() => { console.error('❌ Missing DOMAIN'
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 function pick(keyBase) {
-  const keyName = IS_PROD ? `${keyBase}_PROD` : `${keyBase}_TEST`;
+  // const keyName = IS_PROD ? `${keyBase}_PROD` : `${keyBase}_TEST`;
+  const keyName = `${keyBase}_TEST`;
   const val = process.env[keyName];
   if (!val) {
     console.error(`❌ Missing ${keyName} in your .env`);
