@@ -1,90 +1,147 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 
+// Validate required environment variables
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL environment variable is required for Neon connection');
+  throw new Error('Missing DATABASE_URL environment variable');
+}
+
+console.log('🔗 Initializing Neon PostgreSQL connection...');
+console.log('📍 Database URL:', process.env.DATABASE_URL ? 'Set' : 'Missing');
+console.log('🌍 Environment:', process.env.NODE_ENV || 'development');
+
 // Database connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  max: 20,
+  max: process.env.NODE_ENV === 'production' ? 5 : 10, // Lower pool size for serverless
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 10000, // Increased from 2s to 10s
+  query_timeout: 30000, // Add query timeout
+  statement_timeout: 30000, // Add statement timeout
+});
+
+// Add connection error handlers
+pool.on('error', (err) => {
+  console.error('❌ Unexpected error on idle client:', err);
+});
+
+pool.on('connect', () => {
+  console.log('✅ New client connected to Neon database');
+});
+
+pool.on('remove', () => {
+  console.log('🔌 Client removed from pool');
 });
 
 // -------------------------
 // Schema (PostgreSQL version)
 // -------------------------
 
+let schemaInitialized = false;
+let schemaInitializing = false;
+
 async function initSchema() {
-  const client = await pool.connect();
+  if (schemaInitialized || schemaInitializing) {
+    return;
+  }
+  
+  schemaInitializing = true;
+  
   try {
-    // Users table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        has_paid BOOLEAN DEFAULT FALSE,
-        free_chats_used INTEGER DEFAULT 0,
-        magic_token_hash VARCHAR(255),
-        magic_token_expires BIGINT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+    // Validate DATABASE_URL exists
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL environment variable is not set');
+    }
 
-    // User travel plans table  
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS user_travel_plans (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        plan_data JSONB NOT NULL,
-        plan_name VARCHAR(255) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+    const client = await pool.connect();
+    try {
+      // Users table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          has_paid BOOLEAN DEFAULT FALSE,
+          free_chats_used INTEGER DEFAULT 0,
+          magic_token_hash VARCHAR(255),
+          magic_token_expires BIGINT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
 
-    // User chat history table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS user_chat_history (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        session_id VARCHAR(255) NOT NULL,
-        message_data JSONB NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+      // User travel plans table  
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS user_travel_plans (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          plan_data JSONB NOT NULL,
+          plan_name VARCHAR(255) NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
 
-    // User preferences table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS user_preferences (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-        preferences_data JSONB NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+      // User chat history table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS user_chat_history (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          session_id VARCHAR(255) NOT NULL,
+          message_data JSONB NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
 
-    // Indexes for performance
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);`);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_users_magic_token ON users(magic_token_hash);`);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_travel_plans_user ON user_travel_plans(user_id);`);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_chat_history_user_session ON user_chat_history(user_id, session_id);`);
+      // User preferences table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS user_preferences (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+          preferences_data JSONB NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
 
-    console.log('✅ Neon PostgreSQL schema initialized');
+      // Indexes for performance
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_users_magic_token ON users(magic_token_hash);`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_travel_plans_user ON user_travel_plans(user_id);`);
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_chat_history_user_session ON user_chat_history(user_id, session_id);`);
+
+      schemaInitialized = true;
+      console.log('✅ Neon PostgreSQL schema initialized');
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('❌ Failed to initialize schema:', error.message);
+    throw error;
   } finally {
-    client.release();
+    schemaInitializing = false;
   }
 }
 
-// Initialize schema on startup
-initSchema().catch(console.error);
+// Initialize schema on first database operation (lazy initialization)
+let initPromise = null;
+
+async function ensureSchema() {
+  if (!initPromise) {
+    initPromise = initSchema();
+  }
+  return initPromise;
+}
 
 // -------------------------
 // Helper Functions
 // -------------------------
 
 async function executeQuery(query, params = []) {
+  // Ensure schema is initialized before any database operation
+  await ensureSchema();
+  
   const client = await pool.connect();
   try {
     const result = await client.query(query, params);
@@ -264,4 +321,25 @@ export async function getUserPreferences(userId) {
 
 export async function close() {
   await pool.end();
-} 
+  console.log('🔒 Neon database pool closed');
+}
+
+// Test connection function for debugging
+export async function testConnection() {
+  try {
+    console.log('🧪 Testing Neon database connection...');
+    const client = await pool.connect();
+    try {
+      const result = await client.query('SELECT NOW() as current_time, version() as pg_version');
+      console.log('✅ Connection test successful!');
+      console.log('⏰ Current time:', result.rows[0].current_time);
+      console.log('🐘 PostgreSQL version:', result.rows[0].pg_version.split(' ')[0] + ' ' + result.rows[0].pg_version.split(' ')[1]);
+      return { success: true, ...result.rows[0] };
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('❌ Connection test failed:', error.message);
+    return { success: false, error: error.message };
+  }
+}

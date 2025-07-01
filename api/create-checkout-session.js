@@ -41,7 +41,7 @@ export default async function handler(req, res) {
       }
     }
 
-    if (!IS_PROD || IS_PROD) {
+    if (!IS_PROD) {
       // Redirect flow in development
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
