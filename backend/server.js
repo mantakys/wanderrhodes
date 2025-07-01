@@ -41,6 +41,9 @@ console.log(`🔧 Running in ${IS_PROD ? 'production' : 'development'} mode`);
 
 function pick(keyBase) {
   const keyName = IS_PROD ? `${keyBase}_PROD` : `${keyBase}_TEST`;
+  if (!val && IS_PROD) {
+    keyName = `${keyBase}_PROD`;
+  }
   const val = process.env[keyName];
   if (!val) {
     console.error(`❌ Missing ${keyName} in your .env`);
