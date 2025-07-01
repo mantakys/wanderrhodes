@@ -7,9 +7,14 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start-api": "node backend/server.js"
+    "start-api": "node backend/server.js",
+    "test-agent": "node backend/test-agent.js",
+    "test-agent-config": "node -e \"import('./backend/config/agentConfig.js').then(m => console.log('Config status:', m.getConfigStatus()))\""
   },
   "dependencies": {
+    "@langchain/core": "^0.3.61",
+    "@langchain/langgraph": "^0.2.31",
+    "@langchain/openai": "^0.5.16",
     "@mapbox/polyline": "^1.2.1",
     "@radix-ui/react-alert-dialog": "^1.0.5",
     "@radix-ui/react-avatar": "^1.0.3",
@@ -37,6 +42,7 @@
     "framer-motion": "^10.18.0",
     "install": "^0.13.0",
     "jsonwebtoken": "^9.0.2",
+    "langchain": "^0.3.29",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.292.0",
     "mailgun-js": "^0.22.0",
@@ -54,7 +60,8 @@
     "slick-carousel": "^1.8.1",
     "stripe": "^18.2.1",
     "tailwind-merge": "^1.14.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/node": "^20.8.3",

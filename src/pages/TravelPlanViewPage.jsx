@@ -5,6 +5,7 @@ import './TravelPlanViewPage.css';
 import Logo from '@/components/ui/Logo';
 import { getSavedPlans } from '@/utils/plans';
 import { ArrowLeft } from 'lucide-react';
+import { useUser } from '@/components/ThemeProvider';
 
 // Mapbox route fetcher
 async function fetchMapboxRoute(coords) {
@@ -19,6 +20,7 @@ async function fetchMapboxRoute(coords) {
 }
 
 export default function TravelPlanViewPage() {
+  const { user, loading } = useUser();
   const { id } = useParams();
   const navigate = useNavigate();
   const [plan, setPlan] = useState(null);
@@ -30,26 +32,46 @@ export default function TravelPlanViewPage() {
     zoom: 10
   });
 
-  const coords = plan?.locations
-    ? plan.locations.map((l) => l.location?.coordinates).filter(Boolean)
+  // Handle both backend plans (plan.data.locations) and localStorage plans (plan.locations)
+  const planData = plan?.data || plan;
+  const coords = planData?.locations
+    ? planData.locations.map((l) => l.location?.coordinates).filter(Boolean)
     : [];
 
   useEffect(() => {
-    const p = getSavedPlans().find((pl) => String(pl.timestamp) === id);
-    if (!p) {
-      navigate('/plans');
-    } else {
-      setPlan(p);
-      if (p.locations?.[0]?.location?.coordinates) {
-        const firstCoord = p.locations[0].location.coordinates;
-        setViewState({
-          longitude: firstCoord.lng,
-          latitude: firstCoord.lat,
-          zoom: 10
-        });
+    async function loadPlan() {
+      try {
+        const plans = await getSavedPlans(user);
+        // Try to find by database ID first, then by timestamp
+        const foundPlan = plans.find((pl) => 
+          String(pl.id) === id || String(pl.timestamp) === id
+        );
+        
+        if (!foundPlan) {
+          navigate('/plans');
+          return;
+        }
+        
+        setPlan(foundPlan);
+        
+        // Get the actual plan data (handle both formats)
+        const actualPlanData = foundPlan.data || foundPlan;
+        if (actualPlanData.locations?.[0]?.location?.coordinates) {
+          const firstCoord = actualPlanData.locations[0].location.coordinates;
+          setViewState({
+            longitude: firstCoord.lng,
+            latitude: firstCoord.lat,
+            zoom: 10
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load plan:', error);
+        navigate('/plans');
       }
     }
-  }, [id, navigate]);
+    
+    loadPlan();
+  }, [id, navigate, user]);
 
   useEffect(() => {
     if (coords.length > 1) {
@@ -100,8 +122,15 @@ export default function TravelPlanViewPage() {
             <ArrowLeft className="w-7 h-7" />
           </button>
           {/* Logo absolutely centered */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full flex justify-center pointer-events-none">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full flex justify-center">
+            <button
+              onClick={() => navigate('/')}
+              className="focus:outline-none"
+              style={{ background: 'none', border: 'none', padding: 0, margin: 0 }}
+              aria-label="Go to Home"
+            >
             <Logo className="text-3xl md:text-4xl" />
+            </button>
           </div>
         </div>
       </div>
@@ -116,7 +145,7 @@ export default function TravelPlanViewPage() {
           mapboxAccessToken={import.meta.env.VITE_MAPBOX_ACCESS_TOKEN}
         >
           {/* Markers */}
-          {plan.locations.map((loc, idx) => {
+          {planData.locations?.map((loc, idx) => {
             const c = loc.location?.coordinates;
             if (!c) return null;
             return (
@@ -149,9 +178,11 @@ export default function TravelPlanViewPage() {
 
       {/* Info board */}
       <div className="bg-black/50 backdrop-blur-md border-t border-white/10 p-4">
-        <h2 className="text-xl font-bold text-[#E8D5A4] mb-2">{plan.name}</h2>
+        <h2 className="text-xl font-bold text-[#E8D5A4] mb-2">
+          {plan.name || plan.title || 'Travel Plan'}
+        </h2>
         <div className="text-sm text-[#F4E1C1]/80">
-          {plan.locations.length} locations • {plan.companions || 'Solo'} trip
+          {planData.locations?.length || 0} locations • {planData.companions || 'Solo'} trip
         </div>
       </div>
     </div>

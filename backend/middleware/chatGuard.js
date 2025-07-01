@@ -3,7 +3,7 @@ import { requirePaidUser } from './auth.js';
 
 // In-memory fallback for guests identified by IP
 const ipUsage = new Map();
-const FREE_CHATS_ALLOWED = 1;
+const FREE_CHATS_ALLOWED = 5;
 
 export function chatGuard(req, res, next) {
   if (req.user) {
@@ -16,7 +16,7 @@ export function chatGuard(req, res, next) {
     return res.status(402).json({ error: 'Free usage exhausted – please complete payment.' });
   }
 
-  // Guest flow – track by IP to allow exactly one request
+  // Guest flow – track by IP to allow exactly 5 requests
   const ip = req.ip;
   const used = ipUsage.get(ip) || 0;
   if (used < FREE_CHATS_ALLOWED) {

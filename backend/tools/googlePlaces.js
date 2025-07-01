@@ -117,30 +117,30 @@ async function getPlacePhotos(placeId) {
 export async function fetchPlacePhoto(query) {
   if (!process.env.GOOGLE_MAPS_API_KEY) {
     console.warn('📸 Google Places API key not configured, skipping photo fetch');
-    return null;
+    return { photoUrl: null, placeId: null };
   }
 
   try {
     // Step 1: Find the place ID
     const placeId = await findPlaceId(query);
     if (!placeId) {
-      return null;
+      return { photoUrl: null, placeId: null };
     }
 
     // Step 2: Get photo references for the place
     const photoName = await getPlacePhotos(placeId);
     if (!photoName) {
-      return null;
+      return { photoUrl: null, placeId };
     }
 
     // Step 3: Construct the photo URL
     const photoUrl = `https://places.googleapis.com/v1/${photoName}/media?maxHeightPx=800&maxWidthPx=800&key=${process.env.GOOGLE_MAPS_API_KEY}`;
     
     console.log(`📸 Generated photo URL for ${query}`);
-    return photoUrl;
+    return { photoUrl, placeId };
   } catch (err) {
     console.error('📸 Error fetching place photo:', err.message);
-    return null;
+    return { photoUrl: null, placeId: null };
   }
 }
 

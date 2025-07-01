@@ -35,7 +35,7 @@ export default function AdminUsersPage() {
     }
   };
 
-  if (process.env.NODE_ENV === 'production') {
+  if (import.meta.env.PROD) {
     return <div className="p-8 text-center text-red-500">This page is only available in development mode.</div>;
   }
 

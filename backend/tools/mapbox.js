@@ -1,37 +1,53 @@
-import fetch from 'node-fetch';
+import axios from 'axios';
 
-const MAPBOX_ACCESS_TOKEN = process.env.MAPBOX_ACCESS_TOKEN;
+const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+
+if (!GOOGLE_MAPS_API_KEY) {
+  console.warn('⚠️ GOOGLE_MAPS_API_KEY is not set in the environment. Google Maps API calls will fail.');
+}
 
 export async function getNearbyPlaces({ lat, lng, radius = 1000, type = 'restaurant' }) {
-  // Mapbox does not provide ratings or user reviews like Google, so only basic info is returned
-  const query = encodeURIComponent(type);
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?proximity=${lng},${lat}&types=poi&access_token=${MAPBOX_ACCESS_TOKEN}`;
-  const response = await fetch(url);
-  const data = await response.json();
-  if (!data.features) {
-    console.error('Mapbox getNearbyPlaces: No features in response', data);
+  if (!GOOGLE_MAPS_API_KEY) return [];
+  try {
+    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${type}&key=${GOOGLE_MAPS_API_KEY}`;
+    const response = await axios.get(url);
+    const data = response.data;
+    if (!data.results) {
+      console.error('Google Places getNearbyPlaces: No results in response', data);
+      return [];
+    }
+    return data.results.map(place => ({
+      name: place.name,
+      address: place.vicinity,
+      rating: place.rating,
+      place_id: place.place_id,
+      coordinates: { lat: place.geometry.location.lat, lng: place.geometry.location.lng },
+      total_ratings: place.user_ratings_total,
+    }));
+  } catch (err) {
+    console.error('Google Places getNearbyPlaces error:', err.message);
     return [];
   }
-  return data.features.map(place => ({
-    name: place.text,
-    address: place.place_name,
-    rating: null,
-    place_id: place.id,
-    coordinates: { lat: place.center[1], lng: place.center[0] },
-    total_ratings: null,
-  }));
 }
 
 export async function getTravelTime({ origin, destination, mode = 'driving' }) {
-  // origin and destination should be strings like 'lat,lng'
-  const mapboxMode = mode === 'walking' ? 'walking' : mode === 'cycling' ? 'cycling' : 'driving';
-  const url = `https://api.mapbox.com/directions/v5/mapbox/${mapboxMode}/${origin};${destination}?geometries=geojson&access_token=${MAPBOX_ACCESS_TOKEN}`;
-  const response = await fetch(url);
-  const data = await response.json();
-  if (!data.routes || data.routes.length === 0) return null;
-  const route = data.routes[0];
-  return {
-    distance_m: route.distance,
-    duration_s: route.duration,
-  };
+  if (!GOOGLE_MAPS_API_KEY) return null;
+  try {
+    // origin and destination can be place names or lat,lng
+    const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&mode=${mode}&key=${GOOGLE_MAPS_API_KEY}`;
+    const response = await axios.get(url);
+    const data = response.data;
+    if (!data.routes || data.routes.length === 0 || !data.routes[0].legs || data.routes[0].legs.length === 0) {
+      console.error('Google Directions getTravelTime: No routes/legs in response', data);
+      return null;
+    }
+    const leg = data.routes[0].legs[0];
+    return {
+      distance_m: leg.distance.value,
+      duration_s: leg.duration.value,
+    };
+  } catch (err) {
+    console.error('Google Directions getTravelTime error:', err.message);
+    return null;
+  }
 } 

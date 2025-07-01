@@ -5,6 +5,7 @@ import { promisify } from 'util';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { getNearbyPlaces, getTravelTime } from './tools/mapbox.js';
+import { geocodeLocation, validateCoordinates } from './tools/geocoding.js';
 import Ajv from 'ajv';
 
 const execFileAsync = promisify(execFile);
@@ -105,10 +106,10 @@ Your approach to travel planning should be thoughtful and personalized:
   "type": "Category (restaurant, attraction, beach, etc.)",
   "description": "Brief but engaging description",
   "location": {
-    "address": "Full address",
+    "address": "Full address in Rhodes, Greece",
     "coordinates": {
-      "lat": latitude as number,
-      "lng": longitude as number
+      "lat": 36.4341,
+      "lng": 28.2176
     }
   },
   "details": {
@@ -132,9 +133,10 @@ IMPORTANT RULES FOR JSON:
 1. Each location's JSON must be on a single line
 2. Do not include any line breaks or extra spaces in the JSON
 3. Use double quotes for all strings
-4. Use numbers (not strings) for coordinates
-5. Provide the JSON immediately after mentioning each location
-6. Do not include any text between JSON objects
+4. For coordinates, just use the Rhodes center coordinates (36.4341, 28.2176) - they will be automatically geocoded for accuracy
+5. Focus on providing accurate location names and addresses - coordinates will be geocoded
+6. Provide the JSON immediately after mentioning each location
+7. Do not include any text between JSON objects
 
 Example format:
 Here's a great spot to visit: {"name": "Example Place", "type": "Restaurant", ...} Another amazing location is: {"name": "Another Place", "type": "Beach", ..., "travel": {"distanceMeters": 12000, "durationMinutes": 18}}
@@ -289,13 +291,82 @@ Begin by gathering any missing details from the user, then plan a personalized i
   console.log("Raw AI Response before parsing:\n---\n", response, "\n---");
   const { locations, cleanedText, metadata } = extractStructuredData(response);
   
+  // Geocode any locations with missing or invalid coordinates
+  const geocodedLocations = await geocodeLocations(locations);
+  
   // Augment with travel times/distances if they are missing
-  await addTravelTimes(locations, userLocation);
+  await addTravelTimes(geocodedLocations, userLocation);
 
   return res.status(200).json({ 
     reply: cleanedText,
-    structuredData: { locations, metadata }
+    structuredData: { locations: geocodedLocations, metadata }
   });
+}
+
+// Geocode locations with missing or invalid coordinates
+async function geocodeLocations(locations) {
+  if (!Array.isArray(locations) || locations.length === 0) {
+    return [];
+  }
+
+  console.log(`🗺️ Geocoding ${locations.length} locations from chat response`);
+
+  const geocodedLocations = await Promise.all(
+    locations.map(async (location, index) => {
+      try {
+        // Check if coordinates are valid
+        const currentCoords = location?.location?.coordinates;
+        const validCoords = validateCoordinates(currentCoords);
+        
+        if (validCoords) {
+          // Coordinates are valid, keep as is
+          console.log(`✅ Location ${index + 1} already has valid coordinates: ${location.name}`);
+          return location;
+        }
+
+        // Coordinates are missing or invalid, geocode the location
+        console.log(`🗺️ Geocoding location ${index + 1}: ${location.name}`);
+        
+        const locationName = location.name;
+        const address = location?.location?.address;
+        
+        if (!locationName) {
+          console.log(`⚠️ Location ${index + 1} missing name, skipping geocoding`);
+          return location;
+        }
+
+        // Try to geocode
+        const coordinates = await geocodeLocation(locationName, address);
+        const newValidCoords = validateCoordinates(coordinates);
+
+        if (newValidCoords) {
+          console.log(`✅ Successfully geocoded ${locationName}: ${newValidCoords.lat}, ${newValidCoords.lng}`);
+          return {
+            ...location,
+            location: {
+              ...location.location,
+              coordinates: newValidCoords
+            }
+          };
+        } else {
+          console.log(`⚠️ Failed to geocode ${locationName}, keeping original`);
+          return location;
+        }
+
+      } catch (error) {
+        console.error(`❌ Error geocoding location ${index + 1}:`, error.message);
+        return location; // Return original location on error
+      }
+    })
+  );
+
+  const validGeocodedCount = geocodedLocations.filter(loc => 
+    validateCoordinates(loc?.location?.coordinates)
+  ).length;
+
+  console.log(`✅ Geocoding complete: ${validGeocodedCount}/${locations.length} locations have valid coordinates`);
+
+  return geocodedLocations;
 }
 
 // Compute travel time & distance between consecutive locations when missing

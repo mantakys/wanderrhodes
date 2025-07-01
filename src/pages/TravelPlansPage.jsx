@@ -3,21 +3,45 @@ import { useNavigate } from 'react-router-dom';
 import Logo from '@/components/ui/Logo';
 import { getSavedPlans, deletePlan } from '@/utils/plans';
 import LocationCard from '@/components/LocationCard';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MessageCircle } from 'lucide-react';
+import { useUser } from '@/components/ThemeProvider';
 
 export default function TravelPlansPage() {
   const [plans, setPlans] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useUser();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const stored = getSavedPlans();
+    async function loadPlans() {
+      try {
+        setIsLoading(true);
+        const stored = await getSavedPlans(user);
+        setPlans(stored);
+      } catch (error) {
+        console.error('Failed to load travel plans:', error);
+        setPlans([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }
 
-    setPlans(stored);
-  }, []);
+    loadPlans();
+  }, [user]);
 
-  const handleDelete = (timestamp) => {
-    deletePlan(timestamp);
-    setPlans(getSavedPlans());
+  const handleDelete = async (planIdentifier) => {
+    try {
+      const success = await deletePlan(planIdentifier, user);
+      if (success) {
+        // Reload plans after successful deletion
+        const updatedPlans = await getSavedPlans(user);
+        setPlans(updatedPlans);
+      } else {
+        console.error('Failed to delete plan');
+      }
+    } catch (error) {
+      console.error('Error deleting plan:', error);
+    }
   };
 
   return (
@@ -35,15 +59,43 @@ export default function TravelPlansPage() {
           <Logo className="text-3xl whitespace-nowrap" />
         </button>
 
-        <div className="w-8" />
+        <button
+          onClick={() => navigate('/chat')}
+          className="p-2 rounded-full hover:bg-white/10 transition flex items-center gap-2 text-sm font-medium"
+        >
+          <MessageCircle className="text-white/80 w-4 h-4" />
+          <span className="text-white/80">New Chat</span>
+        </button>
       </header>
 
       <main className="flex-1 overflow-y-auto p-4 space-y-6">
-        {plans.length === 0 ? (
-          <p className="text-center text-sm mt-10 opacity-80">No saved travel plans yet.</p>
+        {isLoading ? (
+          <div className="text-center mt-20">
+            <div className="bg-white/5 backdrop-blur-lg border border-white/15 rounded-2xl p-8 max-w-md mx-auto">
+              <p className="text-lg mb-4">Loading your travel plans...</p>
+            </div>
+          </div>
+        ) : plans.length === 0 ? (
+          <div className="text-center mt-20">
+            <div className="bg-white/5 backdrop-blur-lg border border-white/15 rounded-2xl p-8 max-w-md mx-auto">
+              <p className="text-lg mb-4">No saved travel plans yet</p>
+              <p className="text-sm opacity-80 mb-6">Start a conversation in chat to create your first travel plan for Rhodes!</p>
+              <button
+                onClick={() => navigate('/chat')}
+                className="px-6 py-3 bg-yellow-400/20 text-yellow-300 rounded-lg hover:bg-yellow-400/30 transition font-medium"
+              >
+                Start Planning
+              </button>
+            </div>
+          </div>
         ) : (
           plans.map((plan) => (
-            <PlanItem key={plan.timestamp} plan={plan} onDelete={() => handleDelete(plan.timestamp)} />
+            <PlanItem 
+              key={plan.id || plan.timestamp} 
+              plan={plan} 
+              onDelete={() => handleDelete(plan.id || plan.timestamp)}
+              user={user}
+            />
           ))
         )}
       </main>
@@ -51,23 +103,32 @@ export default function TravelPlansPage() {
   );
 }
 
-function PlanItem({ plan, onDelete }) {
+function PlanItem({ plan, onDelete, user }) {
   const [expanded, setExpanded] = useState(false);
   const navigate = useNavigate();
-  const { title, timestamp, locations } = plan;
+  
+  // Handle both new backend format and legacy localStorage format
+  const planId = plan.id || plan.timestamp;
+  const planName = plan.name || plan.title || 'Travel Plan';
+  const planTimestamp = plan.timestamp || (plan.createdAt ? new Date(plan.createdAt).getTime() : Date.now());
+  const planData = plan.data || plan; // Backend plans have data property, localStorage plans are the data itself
+  const locations = planData.locations || [];
 
   return (
     <div className="bg-white/5 backdrop-blur-lg border border-white/15 rounded-2xl p-4 shadow-lg hover:shadow-xl transition">
       <div className="flex justify-between items-center" onClick={() => setExpanded((e) => !e)}>
         <div>
-          <h3 className="font-bold text-lg text-yellow-400">{title || 'Travel Plan'}</h3>
-          <p className="text-xs text-white/70">{new Date(timestamp).toLocaleString()}</p>
+          <h3 className="font-bold text-lg text-yellow-400">{planName}</h3>
+          <p className="text-xs text-white/70">{new Date(planTimestamp).toLocaleString()}</p>
+          {user?.email && plan.createdAt && (
+            <p className="text-xs text-green-400/70">Saved to account</p>
+          )}
         </div>
         <div className="flex gap-3 items-center">
           <button
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/plans/${timestamp}`);
+              navigate(`/plans/${planId}`);
             }}
             className="px-3 py-1 text-[10px] font-semibold rounded-full bg-white/10 hover:bg-white/20 transition"
           >
@@ -76,7 +137,7 @@ function PlanItem({ plan, onDelete }) {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/chat?plan=${timestamp}`);
+              navigate(`/chat?plan=${planId}`);
             }}
             className="px-3 py-1 text-[10px] font-semibold rounded-full bg-white/10 hover:bg-white/20 transition"
           >

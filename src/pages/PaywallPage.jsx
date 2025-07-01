@@ -9,6 +9,7 @@ import {
   EmbeddedCheckoutProvider,
   EmbeddedCheckout
 } from '@stripe/react-stripe-js';
+import { useUser } from '@/components/ThemeProvider';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import './PaywallPage.css';
@@ -42,6 +43,7 @@ const unlockedFeatures = [
 
 export default function PaywallPage() {
   const navigate = useNavigate();
+  const { refreshUser } = useUser();
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
 
@@ -68,6 +70,13 @@ export default function PaywallPage() {
       // embedded in prod
       setShowCheckout(true);
     }
+  };
+
+  const handleCheckoutSuccess = async () => {
+    // Refresh user data to reflect the new paid status
+    await refreshUser();
+    // Redirect to home page
+    navigate('/');
   };
 
   const carouselSettings = {
@@ -160,7 +169,10 @@ export default function PaywallPage() {
                 stripe={stripePromise}
                 options={{ fetchClientSecret }}
               >
-                <EmbeddedCheckout className="embedded-checkout" />
+                <EmbeddedCheckout 
+                  className="embedded-checkout"
+                  onComplete={handleCheckoutSuccess}
+                />
               </EmbeddedCheckoutProvider>
             </div>
           )}

@@ -97,6 +97,25 @@
   background: hsl(var(--primary));
 }
 
+/* Smooth scrolling for all elements */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Improve mobile touch scrolling */
+.overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Fix for iOS Safari viewport units on mobile */
+@supports (-webkit-touch-callout: none) {
+  .max-h-\[90vh\] {
+    max-height: 90vh;
+    max-height: -webkit-fill-available;
+  }
+}
+
 /* Custom glowing button effect */
 .glowing-button {
   @apply shadow-[0_0_10px_hsl(var(--wr-neon-gold)),_0_0_20px_hsl(var(--wr-neon-gold)),_0_0_30px_hsl(var(--wr-neon-gold)),_0_0_40px_hsl(var(--wr-neon-gold))];
