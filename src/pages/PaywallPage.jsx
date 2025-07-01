@@ -2,29 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Slider from 'react-slick';
 import { motion } from 'framer-motion';
-import { CheckCircle, Lock, ArrowLeft } from 'lucide-react';
+import { Lock, ArrowLeft } from 'lucide-react';
 import Logo from '../components/ui/Logo';
-import { loadStripe } from '@stripe/stripe-js';
-import {
-  EmbeddedCheckoutProvider,
-  EmbeddedCheckout
-} from '@stripe/react-stripe-js';
-import { useUser } from '@/components/ThemeProvider';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import './PaywallPage.css';
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
-const isDev = import.meta.env.DEV;
-
-const fetchClientSecret = async () => {
-  const res = await fetch('/api/create-checkout-session', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json(); // may return { url } or { clientSecret }
-};
+const isDev = import.meta.env.DEV; // might still be useful for logging
 
 const images = [
   { src: '/assets/secret-beach.jpg', caption: 'Explore breathtaking secret beaches' },
@@ -43,9 +27,7 @@ const unlockedFeatures = [
 
 export default function PaywallPage() {
   const navigate = useNavigate();
-  const { refreshUser } = useUser();
   const [isUnlocking, setIsUnlocking] = useState(false);
-  const [showCheckout, setShowCheckout] = useState(false);
 
   const handleGetAccess = async () => {
     if (isUnlocking) return;
@@ -55,28 +37,23 @@ export default function PaywallPage() {
     const animationDuration = unlockedFeatures.length * 150 + 500;
     await new Promise(r => setTimeout(r, animationDuration));
 
-    // call backend
-    const data = await fetchClientSecret().catch(err => {
+    // call backend -> will redirect automatically
+    await createSessionAndRedirect().catch(err => {
       console.error(err);
       alert('Payment error');
       setIsUnlocking(false);
     });
-    if (!data) return;
-
-    if (isDev) {
-      // redirect flow in dev
-      window.location.href = data.url;
-    } else {
-      // embedded in prod
-      setShowCheckout(true);
-    }
   };
 
-  const handleCheckoutSuccess = async () => {
-    // Refresh user data to reflect the new paid status
-    await refreshUser();
-    // Redirect to home page
-    navigate('/');
+  const createSessionAndRedirect = async () => {
+    const res = await fetch('/api/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!data.url) throw new Error('Server did not return redirect URL');
+    window.location.href = data.url;
   };
 
   const carouselSettings = {
@@ -117,7 +94,7 @@ export default function PaywallPage() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
         >
-          {!showCheckout ? (
+          {!isUnlocking ? (
             <>
               <Slider {...carouselSettings} className="carousel">
                 {images.map((img, i) => (
@@ -139,9 +116,7 @@ export default function PaywallPage() {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: i * 0.1 }}
                       >
-                        {isUnlocking
-                          ? <CheckCircle className="icon unlocked" />
-                          : <Lock className="icon locked" />}
+                        <Lock className="icon locked" />
                       </motion.span>
                       {feature}
                     </li>
@@ -165,15 +140,6 @@ export default function PaywallPage() {
           ) : (
             <div className="checkout-wrapper">
               <h2>Complete Your Purchase</h2>
-              <EmbeddedCheckoutProvider
-                stripe={stripePromise}
-                options={{ fetchClientSecret }}
-              >
-                <EmbeddedCheckout 
-                  className="embedded-checkout"
-                  onComplete={handleCheckoutSuccess}
-                />
-              </EmbeddedCheckoutProvider>
             </div>
           )}
         </motion.div>
