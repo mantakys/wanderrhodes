@@ -34,7 +34,7 @@ const LocationCard = ({ location }) => {
         setIsLoading(true);
         setError(null);
         try {
-          const endpoint = '/api/place-photo';
+          const endpoint = '/api/photos?action=place';
           
           // Use precise query with location context for Rhodes
           const query = `${location.name}, Rhodes, Greece`;
@@ -163,7 +163,7 @@ const LocationCard = ({ location }) => {
                     className="w-full h-48 flex items-center justify-center overflow-hidden rounded-lg bg-black/30"
                   >
                     <img
-                      src={`/api/photo-proxy?url=${encodeURIComponent(placeData.photoUrl)}`}
+                      src={`/api/photos?action=proxy&url=${encodeURIComponent(placeData.photoUrl)}`}
                       alt={`Photo of ${displayName}`}
                       className="w-auto h-auto max-w-full max-h-full object-contain rounded-lg"
                       onError={(e) => {

@@ -39,10 +39,10 @@ export default function LoginPage() {
     console.log('🔍 Verifying token:', token);
     
     try {
-      const res = await fetch('/api/verify-login', {
+      const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token })
+        body: JSON.stringify({ action: 'verify-login', token })
       });
 
       console.log('📡 Verify response status:', res.status);

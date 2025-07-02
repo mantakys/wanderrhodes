@@ -36,7 +36,7 @@ export function simulateSuccessfulPayment(sessionId) {
  * Expects { response: string, remaining: { free: number, paid: number } }.
  */
 export async function sendPrompt(prompt) {
-  const res = await fetch('/api/send-prompt', {
+  const res = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt })

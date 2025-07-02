@@ -36,8 +36,10 @@ export default function HomePage() {
 
   const handleLogout = async () => {
     try {
-      const res = await fetch('/api/logout', {
-        method: 'POST'
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'logout' })
       });
       
       if (res.ok) {
@@ -62,10 +64,10 @@ export default function HomePage() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/request-login', {
+      const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() })
+        body: JSON.stringify({ action: 'request-login', email: email.trim() })
       });
 
       if (res.ok) {
