@@ -1,6 +1,7 @@
 import Stripe from 'stripe';
 import jwt from 'jsonwebtoken';
-import { getUserByEmail } from '../backend/db-neon.js';
+import { getUserByEmail, upsertUser } from '../backend/db-neon.js';
+import { sendSignupConfirmation } from '../backend/email.js';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -42,6 +43,8 @@ export default async function handler(req, res) {
   }
 
   const sessionId = req.query.session_id;
+  const manualFix = req.query.manual_fix;
+  
   if (!sessionId) {
     return res.status(400).json({ error: 'Missing session_id' });
   }
@@ -84,6 +87,30 @@ export default async function handler(req, res) {
           
           // Redirect to clean homepage
           return res.redirect(302, '/');
+        } else if (manualFix === 'true') {
+          // Manual fix: mark user as paid and send welcome email (for debugging webhook issues)
+          console.log(`🔧 Manual fix triggered for user: ${email}`);
+          try {
+            await upsertUser(email, true);
+            console.log(`✅ User manually marked as paid: ${email}`);
+            
+            await sendSignupConfirmation(email);
+            console.log(`✅ Welcome email sent to: ${email}`);
+            
+            // Create JWT for authentication
+            const jwtToken = createJWT({ email });
+            
+            // Set the JWT cookie
+            res.setHeader('Set-Cookie', [
+              `jwt=${jwtToken}; HttpOnly; ${IS_PROD ? 'Secure;' : ''} SameSite=Strict; Max-Age=${30 * 24 * 60 * 60}; Path=/`
+            ]);
+            
+            // Redirect to clean homepage
+            return res.redirect(302, '/');
+          } catch (error) {
+            console.error('❌ Manual fix failed:', error.message);
+            return res.redirect(302, `/paywall?error=manual_fix_failed`);
+          }
         } else {
           // Session is complete but webhook hasn't processed payment yet
           // Redirect to a "processing" page that will check again
