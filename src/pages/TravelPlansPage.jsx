@@ -66,8 +66,11 @@ export default function TravelPlansPage() {
             localStorage.removeItem('wr_plan_config');
             sessionStorage.removeItem('wr_current_plan');
             
-            // Navigate to chat with new parameter
-            navigate('/chat?new=true');
+            // Set a flag to indicate this is a new session
+            sessionStorage.setItem('wr_new_session', 'true');
+            
+            // Navigate to chat
+            navigate('/chat');
           }}
           className="p-2 rounded-full hover:bg-white/10 transition flex items-center gap-2 text-sm font-medium"
         >
@@ -95,8 +98,11 @@ export default function TravelPlansPage() {
                   localStorage.removeItem('wr_plan_config');
                   sessionStorage.removeItem('wr_current_plan');
                   
-                  // Navigate to chat with new parameter
-                  navigate('/chat?new=true');
+                  // Set a flag to indicate this is a new session
+                  sessionStorage.setItem('wr_new_session', 'true');
+                  
+                  // Navigate to chat
+                  navigate('/chat');
                 }}
                 className="px-6 py-3 bg-yellow-400/20 text-yellow-300 rounded-lg hover:bg-yellow-400/30 transition font-medium"
               >

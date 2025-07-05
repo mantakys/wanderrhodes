@@ -136,7 +136,7 @@ export default function ChatPage() {
 
   const [searchParams] = useSearchParams();
   const planId = searchParams.get('plan');
-  const isNewPlan = searchParams.get('new') === 'true';
+  const isNewPlan = sessionStorage.getItem('wr_new_session') === 'true';
 
   const { user, loading, refreshUser } = useUser();
 
@@ -144,7 +144,7 @@ export default function ChatPage() {
   const initialMessages = (() => {
     if (typeof window === 'undefined') return [];
 
-    // If this is a new plan, start with just the greeting
+    // If this is a new session, start with just the greeting
     if (isNewPlan) {
       return [
         {
@@ -193,7 +193,7 @@ export default function ChatPage() {
   const [planConfig, setPlanConfig] = useState(() => {
     if (typeof window === 'undefined') return null;
     
-    // If this is a new plan, force plan configuration
+    // If this is a new session, force plan configuration
     if (isNewPlan) {
       return null;
     }
@@ -367,12 +367,10 @@ export default function ChatPage() {
     };
   }, [isTyping]);
 
-  // Clear the 'new' parameter from URL after component loads
+  // Clear the 'new session' flag after component loads
   useEffect(() => {
     if (isNewPlan) {
-      const newUrl = new URL(window.location);
-      newUrl.searchParams.delete('new');
-      window.history.replaceState({}, '', newUrl.toString());
+      sessionStorage.removeItem('wr_new_session');
     }
   }, [isNewPlan]);
 

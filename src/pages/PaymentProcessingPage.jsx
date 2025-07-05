@@ -53,8 +53,11 @@ export default function PaymentProcessingPage() {
                 localStorage.removeItem('wr_plan_config');
                 sessionStorage.removeItem('wr_current_plan');
                 
-                // Navigate to chat with new parameter
-                navigate('/chat?new=true');
+                // Set a flag to indicate this is a new session
+                sessionStorage.setItem('wr_new_session', 'true');
+                
+                // Navigate to chat
+                navigate('/chat');
               }, 2000);
               return;
             }
