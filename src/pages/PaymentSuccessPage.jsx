@@ -35,7 +35,13 @@ export default function PaymentSuccessPage() {
           
           // Redirect to chat after a short delay
           setTimeout(() => {
-            navigate('/chat');
+            // Clear existing chat and plan data to start fresh
+            localStorage.removeItem('wr_chat_history');
+            localStorage.removeItem('wr_plan_config');
+            sessionStorage.removeItem('wr_current_plan');
+            
+            // Navigate to chat with new parameter
+            navigate('/chat?new=true');
           }, 2000);
         } else {
           setError('Payment not completed');

@@ -60,7 +60,15 @@ export default function TravelPlansPage() {
         </button>
 
         <button
-          onClick={() => navigate('/chat')}
+          onClick={() => {
+            // Clear existing chat and plan data to start fresh
+            localStorage.removeItem('wr_chat_history');
+            localStorage.removeItem('wr_plan_config');
+            sessionStorage.removeItem('wr_current_plan');
+            
+            // Navigate to chat with new parameter
+            navigate('/chat?new=true');
+          }}
           className="p-2 rounded-full hover:bg-white/10 transition flex items-center gap-2 text-sm font-medium"
         >
           <MessageCircle className="text-white/80 w-4 h-4" />
@@ -81,7 +89,15 @@ export default function TravelPlansPage() {
               <p className="text-lg mb-4">No saved travel plans yet</p>
               <p className="text-sm opacity-80 mb-6">Start a conversation in chat to create your first travel plan for Rhodes!</p>
               <button
-                onClick={() => navigate('/chat')}
+                onClick={() => {
+                  // Clear existing chat and plan data to start fresh
+                  localStorage.removeItem('wr_chat_history');
+                  localStorage.removeItem('wr_plan_config');
+                  sessionStorage.removeItem('wr_current_plan');
+                  
+                  // Navigate to chat with new parameter
+                  navigate('/chat?new=true');
+                }}
                 className="px-6 py-3 bg-yellow-400/20 text-yellow-300 rounded-lg hover:bg-yellow-400/30 transition font-medium"
               >
                 Start Planning

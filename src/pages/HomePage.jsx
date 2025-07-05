@@ -192,7 +192,15 @@ export default function HomePage() {
       <div className="flex flex-col items-center w-full max-w-xs gap-3 z-10 mb-4">
         <motion.button
           className="w-full py-4 text-base font-bold rounded-xl bg-gradient-to-r from-orange-500 to-yellow-500 text-white transition-all duration-300 shadow-lg"
-          onClick={() => navigate('/chat')}
+          onClick={() => {
+            // Clear existing chat and plan data to start fresh
+            localStorage.removeItem('wr_chat_history');
+            localStorage.removeItem('wr_plan_config');
+            sessionStorage.removeItem('wr_current_plan');
+            
+            // Navigate to chat with new parameter
+            navigate('/chat?new=true');
+          }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1, duration: 0.6, ease: 'easeOut' }}
