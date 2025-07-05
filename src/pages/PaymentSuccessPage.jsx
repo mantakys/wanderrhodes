@@ -35,15 +35,6 @@ export default function PaymentSuccessPage() {
           
           // Redirect to chat after a short delay
           setTimeout(() => {
-            // Clear existing chat and plan data to start fresh
-            localStorage.removeItem('wr_chat_history');
-            localStorage.removeItem('wr_plan_config');
-            sessionStorage.removeItem('wr_current_plan');
-            
-            // Set a flag to indicate this is a new session
-            sessionStorage.setItem('wr_new_session', 'true');
-            
-            // Navigate to chat
             navigate('/chat');
           }, 2000);
         } else {

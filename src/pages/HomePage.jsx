@@ -112,6 +112,36 @@ export default function HomePage() {
     }
   }, [user?.has_paid]);
 
+  // Check if we should create a new chat due to server errors
+  const checkForServerErrorNewChat = () => {
+    try {
+      const lastServerErrorTime = localStorage.getItem('wr_last_server_error_time');
+      const serverErrorCount = localStorage.getItem('wr_server_error_count');
+      
+      if (!lastServerErrorTime || !serverErrorCount) {
+        return false;
+      }
+      
+      const now = Date.now();
+      const lastErrorTime = parseInt(lastServerErrorTime);
+      const errorCount = parseInt(serverErrorCount);
+      
+      // If there was a server error in the last 5 minutes, create new chat
+      const FIVE_MINUTES = 5 * 60 * 1000;
+      if (now - lastErrorTime < FIVE_MINUTES && errorCount > 0) {
+        // Reset the error tracking after creating new chat
+        localStorage.removeItem('wr_last_server_error_time');
+        localStorage.removeItem('wr_server_error_count');
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.warn('Error checking server error status:', error);
+      return false;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center bg-cover bg-center bg-[url('/sea-bg.png')] lg:bg-[url('/sea-bg-dp.png')]">
@@ -193,16 +223,18 @@ export default function HomePage() {
         <motion.button
           className="w-full py-4 text-base font-bold rounded-xl bg-gradient-to-r from-orange-500 to-yellow-500 text-white transition-all duration-300 shadow-lg"
           onClick={() => {
-            // Clear existing chat and plan data to start fresh
-            localStorage.removeItem('wr_chat_history');
-            localStorage.removeItem('wr_plan_config');
-            sessionStorage.removeItem('wr_current_plan');
+            // Check if we should create a new chat due to server errors
+            const shouldCreateNewChat = checkForServerErrorNewChat();
             
-            // Set a flag to indicate this is a new session
-            sessionStorage.setItem('wr_new_session', 'true');
-            
-            // Navigate to chat
-            navigate('/chat');
+            if (shouldCreateNewChat) {
+              // Clear existing data and start fresh
+              localStorage.removeItem('wr_chat_history');
+              localStorage.removeItem('wr_plan_config');
+              sessionStorage.removeItem('wr_current_plan');
+              navigate('/chat?new=true&reason=server-error');
+            } else {
+              navigate('/chat');
+            }
           }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -242,11 +274,8 @@ export default function HomePage() {
               localStorage.removeItem('wr_plan_config');
               sessionStorage.removeItem('wr_current_plan');
               
-              // Set a flag to indicate this is a new session
-              sessionStorage.setItem('wr_new_session', 'true');
-              
-              // Navigate to chat
-              navigate('/chat');
+              // Navigate to chat with new plan parameter
+              navigate('/chat?new=true');
             }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

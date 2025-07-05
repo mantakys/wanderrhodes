@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/components/ThemeProvider';
+import { logServerError } from '@/utils/serverErrorMonitor';
 
 const SUGGESTIONS = [
   "Where should I eat tonight in Faliraki?",
@@ -136,7 +137,8 @@ export default function ChatPage() {
 
   const [searchParams] = useSearchParams();
   const planId = searchParams.get('plan');
-  const isNewPlan = sessionStorage.getItem('wr_new_session') === 'true';
+  const isNewPlan = searchParams.get('new') === 'true';
+  const serverErrorReason = searchParams.get('reason') === 'server-error';
 
   const { user, loading, refreshUser } = useUser();
 
@@ -144,7 +146,7 @@ export default function ChatPage() {
   const initialMessages = (() => {
     if (typeof window === 'undefined') return [];
 
-    // If this is a new session, start with just the greeting
+    // If this is a new plan, start with just the greeting
     if (isNewPlan) {
       return [
         {
@@ -193,7 +195,7 @@ export default function ChatPage() {
   const [planConfig, setPlanConfig] = useState(() => {
     if (typeof window === 'undefined') return null;
     
-    // If this is a new session, force plan configuration
+    // If this is a new plan, force plan configuration
     if (isNewPlan) {
       return null;
     }
@@ -234,6 +236,10 @@ export default function ChatPage() {
   const [showPlanEditor, setShowPlanEditor] = useState(false);
   const [editablePlan, setEditablePlan] = useState([]);
   const [lastResponse, setLastResponse] = useState(null);
+  
+  // Server error handling state
+  const [serverErrorCount, setServerErrorCount] = useState(0);
+  const [lastServerErrorTime, setLastServerErrorTime] = useState(null);
 
   const freeRemaining = Math.max(FREE_LIMIT - replyCount, 0);
 
@@ -367,14 +373,126 @@ export default function ChatPage() {
     };
   }, [isTyping]);
 
-  // Clear the 'new session' flag after component loads
+  // Clear the 'new' parameter from URL after component loads
   useEffect(() => {
     if (isNewPlan) {
-      sessionStorage.removeItem('wr_new_session');
+      const newUrl = new URL(window.location);
+      newUrl.searchParams.delete('new');
+      window.history.replaceState({}, '', newUrl.toString());
     }
   }, [isNewPlan]);
 
+  // Show notification when page loads due to server error
+  useEffect(() => {
+    if (serverErrorReason) {
+      const newUrl = new URL(window.location);
+      newUrl.searchParams.delete('reason');
+      window.history.replaceState({}, '', newUrl.toString());
+      
+      toast({
+        title: "Fresh Chat Started",
+        description: "I've started a new chat session to resolve the previous server issue. Your conversation history has been backed up safely.",
+        duration: 6000,
+        variant: "default",
+      });
+    }
+  }, [serverErrorReason]);
+
   const sanitize = (str) => str.replace(/<\/?[^>]+(>|$)/g, "");
+
+  // Server error handling utilities
+  const isServerError = (response, data) => {
+    // Check for server errors (500-599) or fallback responses
+    return (!response.ok && response.status >= 500) || 
+           (data && data.fallback === true) || 
+           (data && data.error && data.error.includes('server error'));
+  };
+
+  const shouldCreateNewChatOnError = () => {
+    const now = Date.now();
+    const ONE_MINUTE = 60 * 1000;
+    
+    // Get error tracking from localStorage for persistence
+    const lastErrorTime = localStorage.getItem('wr_last_server_error_time');
+    const errorCount = localStorage.getItem('wr_server_error_count');
+    
+    // Rate limiting: max 1 new chat per minute due to server errors
+    if (lastErrorTime && (now - parseInt(lastErrorTime)) < ONE_MINUTE) {
+      return false;
+    }
+    
+    // Don't create new chat if we've had too many server errors recently
+    if (errorCount && parseInt(errorCount) >= 3) {
+      return false;
+    }
+    
+    return true;
+  };
+
+  const handleServerError = (response, data) => {
+    if (isServerError(response, data) && shouldCreateNewChatOnError()) {
+      const now = Date.now();
+      
+      // Update error tracking in localStorage for persistence
+      setServerErrorCount(prev => prev + 1);
+      setLastServerErrorTime(now);
+      localStorage.setItem('wr_server_error_count', String(serverErrorCount + 1));
+      localStorage.setItem('wr_last_server_error_time', String(now));
+      
+      // Backup current chat history
+      const backupKey = `wr_chat_backup_${now}`;
+      try {
+        localStorage.setItem(backupKey, JSON.stringify(messages));
+        
+        // Clean up old backups (keep only last 3)
+        const backupKeys = Object.keys(localStorage).filter(key => key.startsWith('wr_chat_backup_'));
+        if (backupKeys.length > 3) {
+          backupKeys.sort();
+          backupKeys.slice(0, -3).forEach(key => localStorage.removeItem(key));
+        }
+      } catch (error) {
+        console.warn('Failed to backup chat history:', error);
+      }
+      
+      // Clear current chat and start fresh
+      localStorage.removeItem('wr_chat_history');
+      localStorage.removeItem('wr_plan_config');
+      sessionStorage.removeItem('wr_current_plan');
+      
+      // Log the event for monitoring and security analysis
+      const errorLogData = {
+        status: response.status,
+        fallback: data?.fallback,
+        error: data?.error,
+        errorType: data?.fallback ? 'fallback_response' : 'http_error',
+        newChatTriggered: true,
+        userAuthenticated: !!user?.email,
+        endpoint: response.url || 'unknown'
+      };
+      
+      logServerError(errorLogData);
+      
+      console.log('🚨 Server error triggered new chat creation:', {
+        ...errorLogData,
+        timestamp: now
+      });
+      
+      // Show notification to user
+      toast({
+        title: "Server Issue Detected",
+        description: "I've started a fresh chat to help resolve the issue. Your previous conversation has been backed up.",
+        duration: 8000,
+        variant: "destructive",
+      });
+      
+      // Redirect to new chat
+      navigate('/chat?new=true&reason=server-error');
+      
+      return true;
+    }
+    
+    return false;
+  };
 
   // Interactive functionality handlers
   const handlePreferencesUpdate = (preferences) => {
@@ -525,7 +643,14 @@ export default function ChatPage() {
         });
       }
       
-      const { reply = "(no reply)", structuredData = null } = await res.json();
+      const data = await res.json();
+      const { reply = "(no reply)", structuredData = null } = data;
+      
+      // Check for server errors and handle accordingly
+      if (handleServerError(res, data)) {
+        // Server error handled, new chat will be created
+        return;
+      }
 
       // Log agent metadata if available
       if (structuredData?.metadata?.agentState) {

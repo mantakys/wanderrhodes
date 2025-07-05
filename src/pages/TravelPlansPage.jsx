@@ -5,11 +5,14 @@ import { getSavedPlans, deletePlan } from '@/utils/plans';
 import LocationCard from '@/components/LocationCard';
 import { ArrowLeft, MessageCircle } from 'lucide-react';
 import { useUser } from '@/components/ThemeProvider';
+import { useToast } from '@/components/ui/use-toast';
+import { Toaster } from '@/components/ui/toaster';
 
 export default function TravelPlansPage() {
   const [plans, setPlans] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useUser();
+  const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -44,6 +47,36 @@ export default function TravelPlansPage() {
     }
   };
 
+  // Check if we should create a new chat due to server errors
+  const checkForServerErrorNewChat = () => {
+    try {
+      const lastServerErrorTime = localStorage.getItem('wr_last_server_error_time');
+      const serverErrorCount = localStorage.getItem('wr_server_error_count');
+      
+      if (!lastServerErrorTime || !serverErrorCount) {
+        return false;
+      }
+      
+      const now = Date.now();
+      const lastErrorTime = parseInt(lastServerErrorTime);
+      const errorCount = parseInt(serverErrorCount);
+      
+      // If there was a server error in the last 5 minutes, create new chat
+      const FIVE_MINUTES = 5 * 60 * 1000;
+      if (now - lastErrorTime < FIVE_MINUTES && errorCount > 0) {
+        // Reset the error tracking after creating new chat
+        localStorage.removeItem('wr_last_server_error_time');
+        localStorage.removeItem('wr_server_error_count');
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.warn('Error checking server error status:', error);
+      return false;
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col text-[#F4E1C1]" style={{backgroundImage:"linear-gradient(rgba(20,24,48,0.8), rgba(20,24,48,0.9)), url('/assets/secret-beach.jpg')",backgroundSize:'cover',backgroundPosition:'center'}}>
       {/* Header */}
@@ -61,16 +94,18 @@ export default function TravelPlansPage() {
 
         <button
           onClick={() => {
-            // Clear existing chat and plan data to start fresh
-            localStorage.removeItem('wr_chat_history');
-            localStorage.removeItem('wr_plan_config');
-            sessionStorage.removeItem('wr_current_plan');
+            // Check if we should create a new chat due to server errors
+            const shouldCreateNewChat = checkForServerErrorNewChat();
             
-            // Set a flag to indicate this is a new session
-            sessionStorage.setItem('wr_new_session', 'true');
-            
-            // Navigate to chat
-            navigate('/chat');
+            if (shouldCreateNewChat) {
+              // Clear existing data and start fresh
+              localStorage.removeItem('wr_chat_history');
+              localStorage.removeItem('wr_plan_config');
+              sessionStorage.removeItem('wr_current_plan');
+              navigate('/chat?new=true&reason=server-error');
+            } else {
+              navigate('/chat');
+            }
           }}
           className="p-2 rounded-full hover:bg-white/10 transition flex items-center gap-2 text-sm font-medium"
         >
@@ -92,18 +127,7 @@ export default function TravelPlansPage() {
               <p className="text-lg mb-4">No saved travel plans yet</p>
               <p className="text-sm opacity-80 mb-6">Start a conversation in chat to create your first travel plan for Rhodes!</p>
               <button
-                onClick={() => {
-                  // Clear existing chat and plan data to start fresh
-                  localStorage.removeItem('wr_chat_history');
-                  localStorage.removeItem('wr_plan_config');
-                  sessionStorage.removeItem('wr_current_plan');
-                  
-                  // Set a flag to indicate this is a new session
-                  sessionStorage.setItem('wr_new_session', 'true');
-                  
-                  // Navigate to chat
-                  navigate('/chat');
-                }}
+                onClick={() => navigate('/chat')}
                 className="px-6 py-3 bg-yellow-400/20 text-yellow-300 rounded-lg hover:bg-yellow-400/30 transition font-medium"
               >
                 Start Planning
@@ -121,6 +145,7 @@ export default function TravelPlansPage() {
           ))
         )}
       </main>
+      <Toaster />
     </div>
   );
 }
