@@ -1,9 +1,31 @@
 // Database adapter - chooses between SQLite (dev) and Neon (production)
-const isProduction = process.env.NODE_ENV === 'production' || process.env.DATABASE_URL;
+
+// Function to check if we have PostgreSQL environment variables
+function hasPostgresConfig() {
+  // Check for doubled prefix variables first
+  if (process.env.POSTGRES_POSTGRES_URL) {
+    return true;
+  }
+  
+  // Check for original DATABASE_URL
+  if (process.env.DATABASE_URL) {
+    return true;
+  }
+  
+  // Check for individual components with doubled prefix
+  const host = process.env.POSTGRES_POSTGRES_HOST;
+  const user = process.env.POSTGRES_POSTGRES_USER;
+  const password = process.env.POSTGRES_POSTGRES_PASSWORD;
+  const database = process.env.POSTGRES_POSTGRES_DATABASE;
+  
+  return host && user && password && database;
+}
+
+const isProduction = process.env.NODE_ENV === 'production' || hasPostgresConfig();
 
 let db;
 
-if (isProduction && process.env.DATABASE_URL) {
+if (isProduction && hasPostgresConfig()) {
   console.log('🐘 Using Neon PostgreSQL for production');
   db = await import('./db-neon.js');
 } else {

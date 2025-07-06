@@ -21,7 +21,16 @@ This guide walks you through migrating from SQLite to **Neon PostgreSQL** with *
 ### 2. Environment Configuration
 Add to your `.env` file:
 ```bash
-# Production Database
+# Production Database (Preferred format - matches Vercel)
+POSTGRES_POSTGRES_URL="postgresql://[user]:[password]@[endpoint]/[database]?sslmode=require"
+
+# Alternative: Individual components (matches Vercel doubled prefix)
+POSTGRES_POSTGRES_HOST="[endpoint]"
+POSTGRES_POSTGRES_USER="[user]"
+POSTGRES_POSTGRES_PASSWORD="[password]"
+POSTGRES_POSTGRES_DATABASE="[database]"
+
+# Backwards compatibility (still supported)
 DATABASE_URL="postgresql://[user]:[password]@[endpoint]/[database]?sslmode=require"
 
 # Optional: Separate databases for different environments
@@ -85,8 +94,16 @@ node -e "import('./backend/db-neon.js').then(m => console.log('✅ Neon connecti
 ### 1. Environment Variables in Vercel
 In your Vercel dashboard, add these environment variables:
 
-**Required:**
-- `DATABASE_URL` - Your Neon PostgreSQL connection string
+**Required PostgreSQL Configuration (use the format that matches your Vercel setup):**
+- `POSTGRES_POSTGRES_URL` - Your Neon PostgreSQL connection string (preferred)
+- OR individual components:
+  - `POSTGRES_POSTGRES_HOST` - Your database host
+  - `POSTGRES_POSTGRES_USER` - Your database user
+  - `POSTGRES_POSTGRES_PASSWORD` - Your database password
+  - `POSTGRES_POSTGRES_DATABASE` - Your database name
+- OR `DATABASE_URL` - Your Neon PostgreSQL connection string (legacy format)
+
+**Other Required:**
 - `JWT_SECRET` - Your JWT secret key
 - `DOMAIN` - Your production domain
 - All your existing Stripe, email, and API keys

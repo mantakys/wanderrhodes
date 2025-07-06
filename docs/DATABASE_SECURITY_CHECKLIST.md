@@ -22,7 +22,16 @@
 ### 1. **Environment Variables Security**
 ```bash
 # Add to your .env (never commit these!)
+# PostgreSQL (use the format that matches your deployment):
+POSTGRES_POSTGRES_URL=postgresql://user:pass@host/db?sslmode=require
+# OR individual components:
+POSTGRES_POSTGRES_HOST=host
+POSTGRES_POSTGRES_USER=user
+POSTGRES_POSTGRES_PASSWORD=pass
+POSTGRES_POSTGRES_DATABASE=db
+# OR legacy format:
 DATABASE_URL=postgresql://user:pass@host/db?sslmode=require
+
 JWT_SECRET=your-super-long-random-secret-here
 STRIPE_WEBHOOK_SECRET=whsec_your_stripe_secret
 

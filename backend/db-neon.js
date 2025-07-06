@@ -1,19 +1,46 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 
+// Function to get DATABASE_URL from individual components or use the direct URL
+function getDatabaseUrl() {
+  // First, try to use the direct URL with doubled prefix
+  if (process.env.POSTGRES_POSTGRES_URL) {
+    return process.env.POSTGRES_POSTGRES_URL;
+  }
+  
+  // Fallback to original DATABASE_URL for backwards compatibility
+  if (process.env.DATABASE_URL) {
+    return process.env.DATABASE_URL;
+  }
+  
+  // Construct URL from individual components with doubled prefix
+  const host = process.env.POSTGRES_POSTGRES_HOST;
+  const user = process.env.POSTGRES_POSTGRES_USER;
+  const password = process.env.POSTGRES_POSTGRES_PASSWORD;
+  const database = process.env.POSTGRES_POSTGRES_DATABASE;
+  
+  if (host && user && password && database) {
+    return `postgresql://${user}:${password}@${host}/${database}?sslmode=require`;
+  }
+  
+  return null;
+}
+
 // Validate required environment variables
-if (!process.env.DATABASE_URL) {
-  console.error('❌ DATABASE_URL environment variable is required for Neon connection');
-  throw new Error('Missing DATABASE_URL environment variable');
+const DATABASE_URL = getDatabaseUrl();
+if (!DATABASE_URL) {
+  console.error('❌ PostgreSQL connection environment variables are required');
+  console.error('Required: POSTGRES_POSTGRES_URL or (POSTGRES_POSTGRES_HOST, POSTGRES_POSTGRES_USER, POSTGRES_POSTGRES_PASSWORD, POSTGRES_POSTGRES_DATABASE)');
+  throw new Error('Missing PostgreSQL environment variables');
 }
 
 console.log('🔗 Initializing Neon PostgreSQL connection...');
-console.log('📍 Database URL:', process.env.DATABASE_URL ? 'Set' : 'Missing');
+console.log('📍 Database URL:', DATABASE_URL ? 'Set' : 'Missing');
 console.log('🌍 Environment:', process.env.NODE_ENV || 'development');
 
 // Database connection
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   max: process.env.NODE_ENV === 'production' ? 5 : 10, // Lower pool size for serverless
   idleTimeoutMillis: 30000,
@@ -51,7 +78,7 @@ async function initSchema() {
   
   try {
     // Validate DATABASE_URL exists
-    if (!process.env.DATABASE_URL) {
+    if (!DATABASE_URL) {
       throw new Error('DATABASE_URL environment variable is not set');
     }
 
