@@ -123,7 +123,7 @@ export default async function handler(req, res) {
     }
     
     if (email) {
-      console.log(`💾 Marking user as paid: ${email}`);
+      console.log(`💾 Marking user as paid via checkout session: ${email}`);
       try {
         // 🔒 SECURITY: Only mark user as paid after webhook verification
         await upsertUser(email, true);
@@ -142,6 +142,96 @@ export default async function handler(req, res) {
       console.warn('❌ No customer email found in checkout.session.completed event');
       console.log('🔍 Session object keys:', Object.keys(sessionObject));
       console.log('🔍 Customer details:', sessionObject.customer_details);
+    }
+  } else if (event.type === 'payment_intent.succeeded') {
+    const paymentIntent = event.data.object;
+    console.log('💰 Processing payment intent:', paymentIntent.id);
+    console.log('💰 Payment status:', paymentIntent.status);
+    console.log('💰 Amount:', paymentIntent.amount / 100, paymentIntent.currency?.toUpperCase());
+    
+    let email = null;
+    
+    // Get customer email from payment intent
+    if (paymentIntent.customer) {
+      console.log('👤 Fetching customer from payment intent:', paymentIntent.customer);
+      try {
+        const customer = await stripe.customers.retrieve(paymentIntent.customer);
+        email = customer.email;
+        console.log('📧 Customer email from payment intent:', email);
+      } catch (e) {
+        console.error('❌ Failed to fetch customer from payment intent:', e.message);
+      }
+    }
+    
+    // Alternatively, check if email is in receipt_email
+    if (!email && paymentIntent.receipt_email) {
+      email = paymentIntent.receipt_email;
+      console.log('📧 Customer email from receipt_email:', email);
+    }
+    
+    if (email) {
+      console.log(`💾 Marking user as paid via payment_intent: ${email}`);
+      try {
+        await upsertUser(email, true);
+        console.log(`✅ User marked as paid via payment_intent webhook: ${email}`);
+        
+        // Send welcome email (only if not already sent)
+        console.log(`📧 Sending welcome email to: ${email}`);
+        await sendSignupConfirmation(email);
+        console.log(`✅ Welcome email sent successfully to: ${email}`);
+      } catch (e) {
+        console.error('❌ Failed to process payment_intent webhook:', e.message);
+        console.error('❌ Full error:', e);
+      }
+    } else {
+      console.warn('❌ No customer email found in payment_intent.succeeded event');
+      console.log('🔍 Payment intent customer:', paymentIntent.customer);
+      console.log('🔍 Payment intent receipt_email:', paymentIntent.receipt_email);
+    }
+  } else if (event.type === 'checkout.session.async_payment_failed') {
+    const sessionObject = event.data.object;
+    console.log('❌ Async payment failed for session:', sessionObject.id);
+    console.log('❌ Session status:', sessionObject.status);
+    console.log('❌ Payment status:', sessionObject.payment_status);
+    
+    let email = sessionObject.customer_email || sessionObject.customer_details?.email;
+    if (email) {
+      console.log(`⚠️ Payment failed for user: ${email}`);
+      // Note: We don't mark user as paid, just log the failure
+      // You could send a "payment failed" email here if needed
+    }
+  } else if (event.type === 'payment_intent.payment_failed') {
+    const paymentIntent = event.data.object;
+    console.log('❌ Payment intent failed:', paymentIntent.id);
+    console.log('❌ Failure code:', paymentIntent.last_payment_error?.code);
+    console.log('❌ Failure message:', paymentIntent.last_payment_error?.message);
+    console.log('❌ Amount:', paymentIntent.amount / 100, paymentIntent.currency?.toUpperCase());
+    
+    let email = null;
+    if (paymentIntent.customer) {
+      try {
+        const customer = await stripe.customers.retrieve(paymentIntent.customer);
+        email = customer.email;
+        console.log(`⚠️ Payment failed for user: ${email}`);
+      } catch (e) {
+        console.error('❌ Failed to fetch customer for failed payment:', e.message);
+      }
+    }
+  } else if (event.type === 'payment_intent.canceled') {
+    const paymentIntent = event.data.object;
+    console.log('🚫 Payment intent canceled:', paymentIntent.id);
+    console.log('🚫 Cancellation reason:', paymentIntent.cancellation_reason);
+    console.log('🚫 Amount:', paymentIntent.amount / 100, paymentIntent.currency?.toUpperCase());
+    
+    let email = null;
+    if (paymentIntent.customer) {
+      try {
+        const customer = await stripe.customers.retrieve(paymentIntent.customer);
+        email = customer.email;
+        console.log(`ℹ️ Payment canceled for user: ${email}`);
+      } catch (e) {
+        console.error('❌ Failed to fetch customer for canceled payment:', e.message);
+      }
     }
   } else {
     console.log(`ℹ️ Ignoring webhook event type: ${event.type}`);
