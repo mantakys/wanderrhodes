@@ -69,7 +69,9 @@ export function UserProvider({ children }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/me');
+      const res = await fetch('/api/me', {
+        credentials: 'include' // Required to send cookies with the request
+      });
       if (!res.ok) {
         // If 401/403, user is not authenticated - this is normal
         if (res.status === 401 || res.status === 403) {

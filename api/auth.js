@@ -126,9 +126,13 @@ async function handleVerifyLogin(req, res) {
   
   if (IS_PROD) {
     cookieOptions.push('Secure');
+    // For production, also set the domain
+    cookieOptions.push(`Domain=${DOMAIN.replace('https://', '').replace('http://', '')}`);
   }
   
-  res.setHeader('Set-Cookie', cookieOptions.join('; '));
+  const cookieString = cookieOptions.join('; ');
+  console.log('🍪 [Login] Setting cookie:', cookieString);
+  res.setHeader('Set-Cookie', cookieString);
   
   console.log(`✅ [Login] Login successful for ${user.email}`);
   return res.status(200).json({ success: true, jwt });
@@ -151,9 +155,13 @@ async function handleLogout(req, res) {
   
   if (IS_PROD) {
     clearCookieOptions.push('Secure');
+    // For production, also set the domain
+    clearCookieOptions.push(`Domain=${DOMAIN.replace('https://', '').replace('http://', '')}`);
   }
   
-  res.setHeader('Set-Cookie', clearCookieOptions.join('; '));
+  const clearCookieString = clearCookieOptions.join('; ');
+  console.log('🍪 [Logout] Clearing cookie:', clearCookieString);
+  res.setHeader('Set-Cookie', clearCookieString);
   
   return res.status(200).json({ success: true });
 } 

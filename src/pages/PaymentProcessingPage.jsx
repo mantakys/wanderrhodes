@@ -41,7 +41,9 @@ export default function PaymentProcessingPage() {
           await refreshUser();
           
           // Check if user is now marked as paid
-          const userRes = await fetch('/api/me');
+          const userRes = await fetch('/api/me', {
+            credentials: 'include' // Required to send cookies with the request
+          });
           if (userRes.ok) {
             const userData = await userRes.json();
             if (userData.user && userData.user.has_paid) {
