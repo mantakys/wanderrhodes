@@ -61,7 +61,11 @@ export default async function handler(req, res) {
 
   try {
     console.log('🔔 POST /api/create-checkout-session');
+    console.log('📧 Request body:', req.body);
 
+    // Extract customer email from request body
+    const { email } = req.body;
+    
     // If DOMAIN was not provided via env, fall back to req.headers.origin
     let baseUrl = DOMAIN;
     if (!baseUrl) {
@@ -73,20 +77,56 @@ export default async function handler(req, res) {
       throw new Error('Unable to determine base URL for success/cancel redirect');
     }
 
-    // Always use the simple redirect flow (safer for server-side environments like Vercel).
+    console.log('🌐 Using base URL:', baseUrl);
+    console.log('📧 Customer email:', email || 'Not provided');
+
+    // Create checkout session with customer email
     const sessionParams = {
       mode: 'payment',
       payment_method_types: ['card'],
       line_items: [{ price: STRIPE_PRICE_ID, quantity: 1 }],
       success_url: `${baseUrl}/api/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/paywall`,
+      // Always ensure customer creation for better tracking
+      customer_creation: 'always',
+      // Include customer email if provided
+      ...(email && { customer_email: email }),
+      // Always collect billing address for better customer data
+      billing_address_collection: 'required',
+      // Ensure customer is created and linked to payment intent
+      ...(email && {
+        customer_email: email,
+      }),
+      // Enable automatic tax calculation
+      automatic_tax: { enabled: false }, // Set to true if you want tax calculation
+      // Add metadata for tracking
+      metadata: {
+        source: 'wanderrhodes_paywall',
+        timestamp: new Date().toISOString(),
+        customer_email: email || 'collected_at_checkout'
+      },
+      // Add custom fields for better customer data
+      custom_fields: [],
+      // Ensure payment intent gets customer info
+      payment_intent_data: {
+        ...(email && { receipt_email: email }),
+        metadata: {
+          source: 'wanderrhodes_paywall',
+          customer_email: email || 'collected_at_checkout'
+        }
+      }
     };
 
+    console.log('📋 Session params:', JSON.stringify(sessionParams, null, 2));
+
     const session = await stripe.checkout.sessions.create(sessionParams);
+    console.log('✅ Session created:', session.id);
+    
     return res.json({ url: session.url });
 
   } catch (error) {
     console.error('❌ Error creating session:', error.message);
+    console.error('❌ Full error:', error);
     return res.status(500).json({ error: error.message || 'Stripe session failed' });
   }
 } 

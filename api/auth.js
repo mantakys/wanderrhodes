@@ -93,10 +93,17 @@ async function handleVerifyLogin(req, res) {
   }
   
   console.log(`✅ [Login] User found: ${user.email}`);
-  console.log(`⏰ [Login] Token expires: ${new Date(user.magic_token_expires)}, Current time: ${new Date()}`);
+  console.log(`🔍 [Login] Raw token expires value: ${user.magic_token_expires} (type: ${typeof user.magic_token_expires})`);
   
-  if (user.magic_token_expires < Date.now()) {
-    console.log('❌ [Login] Token has expired');
+  // Convert to number if it's a string (BigInt from PostgreSQL)
+  const expiresTimestamp = typeof user.magic_token_expires === 'string' 
+    ? parseInt(user.magic_token_expires, 10) 
+    : user.magic_token_expires;
+  
+  console.log(`⏰ [Login] Token expires: ${new Date(expiresTimestamp)}, Current time: ${new Date()}`);
+  
+  if (!expiresTimestamp || expiresTimestamp < Date.now()) {
+    console.log('❌ [Login] Token has expired or is invalid');
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
 
@@ -106,13 +113,22 @@ async function handleVerifyLogin(req, res) {
   console.log('🎫 [Login] Creating JWT...');
   const jwt = createJWT({ email: user.email });
   
-  console.log('🍪 [Login] Setting JWT cookie...');
-  res.cookie('jwt', jwt, {
-    httpOnly: true,
-    secure: IS_PROD,
-    sameSite: 'strict',
-    maxAge: 1000 * 60 * 60 * 24 * 30,
-  });
+  console.log('🍪 [Login] Setting JWT cookie using Set-Cookie header...');
+  
+  // Set cookie using Set-Cookie header (Vercel serverless compatible)
+  const cookieOptions = [
+    `jwt=${jwt}`,
+    'HttpOnly',
+    'Path=/',
+    `Max-Age=${60 * 60 * 24 * 30}`, // 30 days
+    'SameSite=Strict'
+  ];
+  
+  if (IS_PROD) {
+    cookieOptions.push('Secure');
+  }
+  
+  res.setHeader('Set-Cookie', cookieOptions.join('; '));
   
   console.log(`✅ [Login] Login successful for ${user.email}`);
   return res.status(200).json({ success: true, jwt });
@@ -124,11 +140,20 @@ async function handleLogout(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  res.clearCookie('jwt', {
-    httpOnly: true,
-    secure: IS_PROD,
-    sameSite: 'strict'
-  });
+  // Clear cookie using Set-Cookie header (Vercel serverless compatible)
+  const clearCookieOptions = [
+    'jwt=',
+    'HttpOnly',
+    'Path=/',
+    'Max-Age=0', // Expire immediately
+    'SameSite=Strict'
+  ];
+  
+  if (IS_PROD) {
+    clearCookieOptions.push('Secure');
+  }
+  
+  res.setHeader('Set-Cookie', clearCookieOptions.join('; '));
   
   return res.status(200).json({ success: true });
 } 

@@ -45,8 +45,11 @@ export default async function handler(req, res) {
 
   const sig = req.headers['stripe-signature'];
   console.log('🪝 Stripe signature present:', !!sig);
+  console.log('🪝 Stripe signature preview:', sig ? sig.substring(0, 50) + '...' : 'N/A');
+  console.log('🪝 Webhook secret preview:', STRIPE_WEBHOOK_SECRET ? STRIPE_WEBHOOK_SECRET.substring(0, 15) + '...' : 'N/A');
   
   let event;
+  let rawBody;
 
   try {
     // Read raw body manually since bodyParser is disabled
@@ -54,19 +57,29 @@ export default async function handler(req, res) {
     for await (const chunk of req) {
       chunks.push(chunk);
     }
-    const rawBody = Buffer.concat(chunks);
+    rawBody = Buffer.concat(chunks);
     console.log('🪝 Raw body length:', rawBody.length);
+    console.log('🪝 Raw body preview:', rawBody.toString().substring(0, 100) + '...');
 
-    // 🔒 SECURITY: Try webhook signature verification, but be more lenient in production
+    // 🔒 SECURITY: Try webhook signature verification with better error handling
     if (sig && STRIPE_WEBHOOK_SECRET) {
       console.log('🔐 Attempting signature verification...');
       try {
         event = stripe.webhooks.constructEvent(rawBody, sig, STRIPE_WEBHOOK_SECRET);
-        console.log('✅ Webhook signature verified');
+        console.log('✅ Webhook signature verified successfully');
       } catch (sigError) {
         console.error('❌ Signature verification failed:', sigError.message);
-        // In production, if signature fails, still try to parse the event
-        // This is a temporary fix - in real production you'd want strict verification
+        console.error('❌ Signature error type:', sigError.type);
+        console.error('❌ Full signature error:', sigError);
+        
+        // Log signature details for debugging
+        if (sig) {
+          const sigParts = sig.split(',');
+          console.log('🔍 Signature parts:', sigParts);
+        }
+        
+        // In production, if signature fails, still try to parse the event as fallback
+        // This is temporary - in real production you'd want strict verification
         console.warn('⚠️ Attempting to parse event without signature verification as fallback');
         try {
           event = JSON.parse(rawBody.toString());
@@ -79,10 +92,12 @@ export default async function handler(req, res) {
     } else {
       // No signature or secret - parse directly
       console.warn('⚠️ No signature verification - parsing directly');
+      console.warn('⚠️ Missing:', !sig ? 'signature' : 'webhook secret');
       event = JSON.parse(rawBody.toString());
     }
   } catch (err) {
     console.error('❌ Webhook processing failed:', err.message);
+    console.error('❌ Full webhook error:', err);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 

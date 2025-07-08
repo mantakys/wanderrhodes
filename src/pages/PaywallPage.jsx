@@ -4,6 +4,7 @@ import Slider from 'react-slick';
 import { motion } from 'framer-motion';
 import { Lock, ArrowLeft } from 'lucide-react';
 import Logo from '../components/ui/Logo';
+import { useUser } from '../components/ThemeProvider';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import './PaywallPage.css';
@@ -28,6 +29,7 @@ const unlockedFeatures = [
 export default function PaywallPage() {
   const navigate = useNavigate();
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const { user } = useUser();
 
   const handleGetAccess = async () => {
     if (isUnlocking) return;
@@ -46,9 +48,11 @@ export default function PaywallPage() {
   };
 
   const createSessionAndRedirect = async () => {
+    console.log('📧 Creating checkout session for user:', user?.email);
     const res = await fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: user?.email }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
