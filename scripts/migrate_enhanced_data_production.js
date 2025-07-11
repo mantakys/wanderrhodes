@@ -283,57 +283,92 @@ async function runMigration() {
       const spatialData = loadDataFile('data/spatial_relationships.json');
       
       if (spatialData.spatial_relationships && spatialData.spatial_relationships.length > 0) {
-        console.log('\n📥 Inserting spatial relationships...');
+        console.log('\n📥 Preparing spatial relationships...');
+        
+        // Build a lookup map for POI IDs to avoid individual queries
+        console.log('📋 Building POI ID lookup map...');
+        const poiIdMap = new Map();
+        const poiResults = await client.query('SELECT id, place_id, legacy_id FROM kb_poi_master');
+        
+        for (const row of poiResults.rows) {
+          if (row.place_id) poiIdMap.set(row.place_id, row.id);
+          if (row.legacy_id) poiIdMap.set(row.legacy_id, row.id);
+        }
+        
+        console.log(`✅ Built lookup map for ${poiIdMap.size} POI identifiers`);
         
         const relationships = spatialData.spatial_relationships;
-        const relBatchSize = 500;
+        console.log(`📊 Processing ${relationships.length} spatial relationships...`);
+        
+        const relBatchSize = 1000;
         let relInsertedCount = 0;
+        let relSkippedCount = 0;
         
         for (let i = 0; i < relationships.length; i += relBatchSize) {
           const batch = relationships.slice(i, i + relBatchSize);
+          const validRelationships = [];
           
+          // Process batch to find valid relationships
           for (const rel of batch) {
-            try {
-              // Find POI IDs by place_id or legacy_id
-              const fromResult = await client.query(
-                'SELECT id FROM kb_poi_master WHERE place_id = $1 OR legacy_id = $1',
-                [rel.poi_from]
-              );
-              const toResult = await client.query(
-                'SELECT id FROM kb_poi_master WHERE place_id = $1 OR legacy_id = $1',
-                [rel.poi_to]
-              );
-              
-              if (fromResult.rows.length > 0 && toResult.rows.length > 0) {
-                await client.query(`
-                  INSERT INTO kb_spatial_relationships (
-                    poi_from, poi_to, relationship_type, distance_meters,
-                    travel_time_walking, travel_time_driving, path_type, confidence_score
-                  ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                  ON CONFLICT (poi_from, poi_to, relationship_type) DO NOTHING
-                `, [
-                  fromResult.rows[0].id,
-                  toResult.rows[0].id,
-                  rel.relationship_type,
-                  rel.distance_meters,
-                  rel.travel_time_walking,
-                  rel.travel_time_driving,
-                  rel.path_type,
-                  rel.confidence_score
-                ]);
-                relInsertedCount++;
-              }
-            } catch (error) {
-              // Skip invalid relationships
-              console.warn(`⚠️ Skipping invalid relationship: ${rel.poi_from} -> ${rel.poi_to}`);
+            const fromId = poiIdMap.get(rel.poi_from);
+            const toId = poiIdMap.get(rel.poi_to);
+            
+            if (fromId && toId && fromId !== toId) {
+              validRelationships.push({
+                poi_from: fromId,
+                poi_to: toId,
+                relationship_type: rel.relationship_type,
+                distance_meters: rel.distance_meters || null,
+                travel_time_walking: rel.travel_time_walking || null,
+                travel_time_driving: rel.travel_time_driving || null,
+                path_type: rel.path_type || null,
+                confidence_score: rel.confidence_score || 0.8
+              });
+            } else {
+              relSkippedCount++;
             }
           }
           
-          console.log(`✅ Processed spatial relationship batch ${Math.ceil((i + relBatchSize) / relBatchSize)} - Total: ${relInsertedCount} relationships`);
+          // Batch insert valid relationships
+          if (validRelationships.length > 0) {
+            const values = [];
+            const params = [];
+            let paramIndex = 1;
+            
+            for (const rel of validRelationships) {
+              values.push(`($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7})`);
+              params.push(
+                rel.poi_from,
+                rel.poi_to,
+                rel.relationship_type,
+                rel.distance_meters,
+                rel.travel_time_walking,
+                rel.travel_time_driving,
+                rel.path_type,
+                rel.confidence_score
+              );
+              paramIndex += 8;
+            }
+            
+            const insertQuery = `
+              INSERT INTO kb_spatial_relationships (
+                poi_from, poi_to, relationship_type, distance_meters,
+                travel_time_walking, travel_time_driving, path_type, confidence_score
+              ) VALUES ${values.join(', ')}
+              ON CONFLICT (poi_from, poi_to, relationship_type) DO NOTHING
+            `;
+            
+            await client.query(insertQuery, params);
+            relInsertedCount += validRelationships.length;
+          }
+          
+          console.log(`✅ Processed batch ${Math.ceil((i + relBatchSize) / relBatchSize)}/${Math.ceil(relationships.length / relBatchSize)} - Inserted: ${relInsertedCount}, Skipped: ${relSkippedCount}`);
         }
+        
+        console.log(`🎯 Spatial relationships complete: ${relInsertedCount} inserted, ${relSkippedCount} skipped`);
       }
     } catch (error) {
-      console.warn('⚠️ Spatial relationships file not found or invalid, skipping...');
+      console.warn('⚠️ Spatial relationships processing failed:', error.message);
     }
     
     // Final statistics
