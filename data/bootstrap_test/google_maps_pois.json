@@ -1,0 +1,987 @@
+[
+  {
+    "place_id": "ChIJSfcuh5FhlRQRqfVB_w9kuo8",
+    "name": "Takis Sandwiches & More",
+    "description": "Takis Sandwiches & More is a restaurant. located in Ethnikis Antistasis 67, Rodos. and is highly rated by visitors (4.5/5.0 from 299 reviews). Visitors particularly enjoy this place, with many praised for its quality.",
+    "primary_type": "restaurant",
+    "secondary_types": [
+      "food",
+      "point_of_interest",
+      "establishment"
+    ],
+    "google_types": [
+      "restaurant",
+      "food",
+      "point_of_interest",
+      "establishment"
+    ],
+    "latitude": 36.4343775,
+    "longitude": 28.2198099,
+    "plus_code": "8G8CC6M9+QW",
+    "formatted_address": "Eth. Antistasis 67, Rodos 851 00, Greece",
+    "vicinity": "Ethnikis Antistasis 67, Rodos",
+    "price_level": 1,
+    "rating": 4.5,
+    "user_ratings_total": 299,
+    "business_status": "OPERATIONAL",
+    "phone_number": "2241 075505",
+    "international_phone": "+30 2241 075505",
+    "website": "https://takisandwiches.com/",
+    "google_url": "https://maps.google.com/?cid=10356700312961676713",
+    "operating_hours": {
+      "periods": [
+        {
+          "close": {
+            "day": 1,
+            "time": "1800"
+          },
+          "open": {
+            "day": 1,
+            "time": "0800"
+          }
+        },
+        {
+          "close": {
+            "day": 2,
+            "time": "1800"
+          },
+          "open": {
+            "day": 2,
+            "time": "0800"
+          }
+        },
+        {
+          "close": {
+            "day": 3,
+            "time": "1800"
+          },
+          "open": {
+            "day": 3,
+            "time": "0800"
+          }
+        },
+        {
+          "close": {
+            "day": 4,
+            "time": "1800"
+          },
+          "open": {
+            "day": 4,
+            "time": "0800"
+          }
+        },
+        {
+          "close": {
+            "day": 5,
+            "time": "1800"
+          },
+          "open": {
+            "day": 5,
+            "time": "0800"
+          }
+        },
+        {
+          "close": {
+            "day": 6,
+            "time": "1800"
+          },
+          "open": {
+            "day": 6,
+            "time": "0800"
+          }
+        }
+      ],
+      "weekday_text": [
+        "Monday: 8:00 AM – 6:00 PM",
+        "Tuesday: 8:00 AM – 6:00 PM",
+        "Wednesday: 8:00 AM – 6:00 PM",
+        "Thursday: 8:00 AM – 6:00 PM",
+        "Friday: 8:00 AM – 6:00 PM",
+        "Saturday: 8:00 AM – 6:00 PM",
+        "Sunday: Closed"
+      ],
+      "open_now": false
+    },
+    "amenities": [
+      "seating",
+      "dining"
+    ],
+    "tags": [],
+    "review_highlights": [
+      "great food but delivery is always late, i live nearby and they managed to be late 1 and a half hour, to much for a sandwich shop",
+      "Great food and Good prices. Staff was excellent. All covid-19 protocols were followed"
+    ],
+    "wheelchair_accessible": true,
+    "data_sources": [
+      "google_maps"
+    ],
+    "last_updated": 1752011625.380951,
+    "verification_status": "verified"
+  },
+  {
+    "place_id": "ChIJyd0z049hlRQRebulLRZ37wA",
+    "name": "Sakura Asian Cuisine",
+    "description": "Sakura Asian Cuisine is a restaurant. located in Konstantinou Tsaldari 8, Rodos. and is highly rated by visitors (4.3/5.0 from 354 reviews). Visitors particularly enjoy this place, with many praised for its quality.",
+    "primary_type": "restaurant",
+    "secondary_types": [
+      "food",
+      "point_of_interest",
+      "establishment"
+    ],
+    "google_types": [
+      "restaurant",
+      "food",
+      "point_of_interest",
+      "establishment"
+    ],
+    "latitude": 36.43284149999999,
+    "longitude": 28.2169791,
+    "plus_code": "8G8CC6M8+4Q",
+    "formatted_address": "Kon/nou Tsaldari 8, Rodos 851 00, Greece",
+    "vicinity": "Konstantinou Tsaldari 8, Rodos",
+    "price_level": 2,
+    "rating": 4.3,
+    "user_ratings_total": 354,
+    "business_status": "OPERATIONAL",
+    "phone_number": "2241 021023",
+    "international_phone": "+30 2241 021023",
+    "website": "https://www.facebook.com/SakuraAsianCuisine/?fref=ts",
+    "google_url": "https://maps.google.com/?cid=67403456572668793",
+    "operating_hours": {
+      "periods": [
+        {
+          "close": {
+            "day": 1,
+            "time": "0000"
+          },
+          "open": {
+            "day": 0,
+            "time": "1700"
+          }
+        },
+        {
+          "close": {
+            "day": 2,
+            "time": "0000"
+          },
+          "open": {
+            "day": 1,
+            "time": "1700"
+          }
+        },
+        {
+          "close": {
+            "day": 3,
+            "time": "0000"
+          },
+          "open": {
+            "day": 2,
+            "time": "1700"
+          }
+        },
+        {
+          "close": {
+            "day": 4,
+            "time": "0000"
+          },
+          "open": {
+            "day": 3,
+            "time": "1700"
+          }
+        },
+        {
+          "close": {
+            "day": 5,
+            "time": "0000"
+          },
+          "open": {
+            "day": 4,
+            "time": "1700"
+          }
+        },
+        {
+          "close": {
+            "day": 6,
+            "time": "0000"
+          },
+          "open": {
+            "day": 5,
+            "time": "1700"
+          }
+        },
+        {
+          "close": {
+            "day": 0,
+            "time": "0000"
+          },
+          "open": {
+            "day": 6,
+            "time": "1700"
+          }
+        }
+      ],
+      "weekday_text": [
+        "Monday: 5:00 PM – 12:00 AM",
+        "Tuesday: 5:00 PM – 12:00 AM",
+        "Wednesday: 5:00 PM – 12:00 AM",
+        "Thursday: 5:00 PM – 12:00 AM",
+        "Friday: 5:00 PM – 12:00 AM",
+        "Saturday: 5:00 PM – 12:00 AM",
+        "Sunday: 5:00 PM – 12:00 AM"
+      ],
+      "open_now": false
+    },
+    "amenities": [
+      "seating",
+      "dining"
+    ],
+    "tags": [
+      "upscale",
+      "authentic"
+    ],
+    "review_highlights": [
+      "This was a nice Spot if you have a craving for Asian, and if you want to stray from the traditional resort food. The taste was good and they put their own Greek flair too it.",
+      "Very good service, very nice kitchen, many different chinese dishes. Located in the center of Rhodes. Their prices are very very good and don't mish to try Sushi. Great Palce",
+      "This Chinese restaurant used to be our favourite one, until now. We all understand that everything is getting more expensive, but come on, the portion size is getting smaller and smaller over time. Yo..."
+    ],
+    "wheelchair_accessible": true,
+    "data_sources": [
+      "google_maps"
+    ],
+    "last_updated": 1752011625.6383932,
+    "verification_status": "verified"
+  },
+  {
+    "place_id": "ChIJf2yQPZJhlRQRVUncY1kbdEI",
+    "name": "ΤΟ ΝΟΣΤΙΜΟ",
+    "description": "ΤΟ ΝΟΣΤΙΜΟ is a restaurant. located in 851 00, Panagioti Rodiou 87, Rodos. and is highly rated by visitors (4.6/5.0 from 191 reviews). Visitors particularly enjoy this place, with many praised for its quality.",
+    "primary_type": "restaurant",
+    "secondary_types": [
+      "food",
+      "point_of_interest",
+      "establishment"
+    ],
+    "google_types": [
+      "restaurant",
+      "food",
+      "point_of_interest",
+      "establishment"
+    ],
+    "latitude": 36.4357616,
+    "longitude": 28.2190746,
+    "plus_code": "8G8CC6P9+8J",
+    "formatted_address": "851 00, Panagioti Rodiou 87, Rodos 851 00, Greece",
+    "vicinity": "851 00, Panagioti Rodiou 87, Rodos",
+    "price_level": null,
+    "rating": 4.6,
+    "user_ratings_total": 191,
+    "business_status": "OPERATIONAL",
+    "phone_number": "2241 033700",
+    "international_phone": "+30 2241 033700",
+    "website": "https://www.22410.gr/companies/%CF%84%CE%BF-%CE%BD%CE%BF%CF%83%CF%84%CE%B9%CE%BC%CE%BF/",
+    "google_url": "https://maps.google.com/?cid=4788482374543100245",
+    "operating_hours": {
+      "periods": [
+        {
+          "close": {
+            "day": 1,
+            "time": "0000"
+          },
+          "open": {
+            "day": 0,
+            "time": "1200"
+          }
+        },
+        {
+          "close": {
+            "day": 2,
+            "time": "0000"
+          },
+          "open": {
+            "day": 1,
+            "time": "1200"
+          }
+        },
+        {
+          "close": {
+            "day": 3,
+            "time": "0000"
+          },
+          "open": {
+            "day": 2,
+            "time": "1200"
+          }
+        },
+        {
+          "close": {
+            "day": 4,
+            "time": "0000"
+          },
+          "open": {
+            "day": 3,
+            "time": "1200"
+          }
+        },
+        {
+          "close": {
+            "day": 5,
+            "time": "0000"
+          },
+          "open": {
+            "day": 4,
+            "time": "1200"
+          }
+        },
+        {
+          "close": {
+            "day": 6,
+            "time": "0000"
+          },
+          "open": {
+            "day": 5,
+            "time": "1200"
+          }
+        },
+        {
+          "close": {
+            "day": 0,
+            "time": "0000"
+          },
+          "open": {
+            "day": 6,
+            "time": "1200"
+          }
+        }
+      ],
+      "weekday_text": [
+        "Monday: 12:00 PM – 12:00 AM",
+        "Tuesday: 12:00 PM – 12:00 AM",
+        "Wednesday: 12:00 PM – 12:00 AM",
+        "Thursday: 12:00 PM – 12:00 AM",
+        "Friday: 12:00 PM – 12:00 AM",
+        "Saturday: 12:00 PM – 12:00 AM",
+        "Sunday: 12:00 PM – 12:00 AM"
+      ],
+      "open_now": false
+    },
+    "amenities": [
+      "seating",
+      "air_conditioning",
+      "dining"
+    ],
+    "tags": [
+      "tourist_oriented",
+      "authentic",
+      "budget_friendly"
+    ],
+    "review_highlights": [
+      "Amazing food! We ate here everyday during our stay.  We tried other gyros around the old Town but nothing compared to the food here.  Great prices, very friendly staff, and delicious food.  It seems l..."
+    ],
+    "wheelchair_accessible": false,
+    "data_sources": [
+      "google_maps"
+    ],
+    "last_updated": 1752011625.912537,
+    "verification_status": "verified"
+  },
+  {
+    "place_id": "ChIJXWrwX5JhlRQRxZParoH6Qsc",
+    "name": "Ta Marasia",
+    "description": "Ta Marasia is a restaurant. located in Agiou Ioanni 155, Rodos. and is highly rated by visitors (4.7/5.0 from 1074 reviews). Visitors particularly enjoy this place, with many praised for its quality, praised for its quality.",
+    "primary_type": "restaurant",
+    "secondary_types": [
+      "point_of_interest",
+      "food",
+      "establishment"
+    ],
+    "google_types": [
+      "restaurant",
+      "point_of_interest",
+      "food",
+      "establishment"
+    ],
+    "latitude": 36.4372801,
+    "longitude": 28.2190758,
+    "plus_code": "8G8CC6P9+WJ",
+    "formatted_address": "Agiou Ioanni 155, Rodos 851 00, Greece",
+    "vicinity": "Agiou Ioanni 155, Rodos",
+    "price_level": null,
+    "rating": 4.7,
+    "user_ratings_total": 1074,
+    "business_status": "OPERATIONAL",
+    "phone_number": "2241 030745",
+    "international_phone": "+30 2241 030745",
+    "website": "http://www.facebook.com/marasiarestaurant",
+    "google_url": "https://maps.google.com/?cid=14358313996901848005",
+    "operating_hours": {
+      "periods": [
+        {
+          "close": {
+            "day": 0,
+            "time": "2345"
+          },
+          "open": {
+            "day": 0,
+            "time": "1600"
+          }
+        },
+        {
+          "close": {
+            "day": 1,
+            "time": "2345"
+          },
+          "open": {
+            "day": 1,
+            "time": "1400"
+          }
+        },
+        {
+          "close": {
+            "day": 2,
+            "time": "2345"
+          },
+          "open": {
+            "day": 2,
+            "time": "1400"
+          }
+        },
+        {
+          "close": {
+            "day": 3,
+            "time": "2345"
+          },
+          "open": {
+            "day": 3,
+            "time": "1400"
+          }
+        },
+        {
+          "close": {
+            "day": 4,
+            "time": "2345"
+          },
+          "open": {
+            "day": 4,
+            "time": "1400"
+          }
+        },
+        {
+          "close": {
+            "day": 5,
+            "time": "2345"
+          },
+          "open": {
+            "day": 5,
+            "time": "1400"
+          }
+        },
+        {
+          "close": {
+            "day": 6,
+            "time": "2345"
+          },
+          "open": {
+            "day": 6,
+            "time": "1400"
+          }
+        }
+      ],
+      "weekday_text": [
+        "Monday: 2:00 – 11:45 PM",
+        "Tuesday: 2:00 – 11:45 PM",
+        "Wednesday: 2:00 – 11:45 PM",
+        "Thursday: 2:00 – 11:45 PM",
+        "Friday: 2:00 – 11:45 PM",
+        "Saturday: 2:00 – 11:45 PM",
+        "Sunday: 4:00 – 11:45 PM"
+      ],
+      "open_now": false
+    },
+    "amenities": [
+      "seating",
+      "air_conditioning",
+      "dining"
+    ],
+    "tags": [
+      "romantic",
+      "authentic"
+    ],
+    "review_highlights": [
+      "Amazing meal, highly recommend if you are in Rhodes. It is a bit out from city centre, about 15/20mins walk but food is great so it's worth it! We had dips selection and bouyiourdi for starters, shrim...",
+      "We were looking for a traditional Greek Taberna to visit when on our stay and this place looked perfect. The hostess was so kind and accommodated us changing our reservation when we popped in on the c...",
+      "We had a delicious Greek salad, meatballs and some veal in tomato sauce with cinnamon. Everything was extremely tasty and full of flavour. So far our favorite restaurant in Rhodes, definitely recommen..."
+    ],
+    "wheelchair_accessible": true,
+    "data_sources": [
+      "google_maps"
+    ],
+    "last_updated": 1752011626.173534,
+    "verification_status": "verified"
+  },
+  {
+    "place_id": "ChIJRROAc5JhlRQRVa3gS56uWnE",
+    "name": "Pizza Fan Ρόδος",
+    "description": "Pizza Fan Ρόδος is a restaurant. located in Konstantinou Tsaldari 39, Rodos. and is highly rated by visitors (4/5.0 from 504 reviews).",
+    "primary_type": "restaurant",
+    "secondary_types": [
+      "restaurant",
+      "restaurant",
+      "food",
+      "point_of_interest"
+    ],
+    "google_types": [
+      "meal_delivery",
+      "meal_takeaway",
+      "restaurant",
+      "food",
+      "point_of_interest",
+      "establishment"
+    ],
+    "latitude": 36.4305246,
+    "longitude": 28.2168425,
+    "plus_code": "8G8CC6J8+6P",
+    "formatted_address": "Kon/nou Tsaldari 39, Rodos 851 00, Greece",
+    "vicinity": "Konstantinou Tsaldari 39, Rodos",
+    "price_level": 2,
+    "rating": 4,
+    "user_ratings_total": 504,
+    "business_status": "OPERATIONAL",
+    "phone_number": "2241 022366",
+    "international_phone": "+30 2241 022366",
+    "website": "https://www.pizzafan.gr/el?utm_source=google&utm_medium=gmb&utm_campaign=rodos",
+    "google_url": "https://maps.google.com/?cid=8168032869090897237",
+    "operating_hours": {
+      "periods": [
+        {
+          "close": {
+            "day": 1,
+            "time": "0030"
+          },
+          "open": {
+            "day": 0,
+            "time": "1200"
+          }
+        },
+        {
+          "close": {
+            "day": 2,
+            "time": "0030"
+          },
+          "open": {
+            "day": 1,
+            "time": "1200"
+          }
+        },
+        {
+          "close": {
+            "day": 3,
+            "time": "0030"
+          },
+          "open": {
+            "day": 2,
+            "time": "1200"
+          }
+        },
+        {
+          "close": {
+            "day": 4,
+            "time": "0030"
+          },
+          "open": {
+            "day": 3,
+            "time": "1200"
+          }
+        },
+        {
+          "close": {
+            "day": 5,
+            "time": "0030"
+          },
+          "open": {
+            "day": 4,
+            "time": "1200"
+          }
+        },
+        {
+          "close": {
+            "day": 6,
+            "time": "0030"
+          },
+          "open": {
+            "day": 5,
+            "time": "1200"
+          }
+        },
+        {
+          "close": {
+            "day": 0,
+            "time": "0030"
+          },
+          "open": {
+            "day": 6,
+            "time": "1200"
+          }
+        }
+      ],
+      "weekday_text": [
+        "Monday: 12:00 PM – 12:30 AM",
+        "Tuesday: 12:00 PM – 12:30 AM",
+        "Wednesday: 12:00 PM – 12:30 AM",
+        "Thursday: 12:00 PM – 12:30 AM",
+        "Friday: 12:00 PM – 12:30 AM",
+        "Saturday: 12:00 PM – 12:30 AM",
+        "Sunday: 12:00 PM – 12:30 AM"
+      ],
+      "open_now": false
+    },
+    "amenities": [
+      "seating",
+      "air_conditioning",
+      "dining"
+    ],
+    "tags": [],
+    "review_highlights": [
+      "Worst Pizza I ever had in my life!!!\nAnd the most disgusting fact is that we found multiple hair in our pizza dough.",
+      "One of the finest in quality and especially price pizza chains in Greece. The company practically offers every pizza type that you would wish for along with pasta options and salads. It also gives lot...",
+      "No mushrooms on my country style pizza maybe they forgot that it comes with mushrooms 😜"
+    ],
+    "wheelchair_accessible": null,
+    "data_sources": [
+      "google_maps"
+    ],
+    "last_updated": 1752011626.422146,
+    "verification_status": "verified"
+  },
+  {
+    "place_id": "ChIJR4yxdothlRQRwIN29DsOl5g",
+    "name": "Acropolis of Rhodes",
+    "description": "Acropolis of Rhodes is a popular tourist attraction. located in Diagoridon 68, Rodos. and is highly rated by visitors (4.2/5.0 from 6866 reviews).",
+    "primary_type": "attraction",
+    "secondary_types": [
+      "point_of_interest",
+      "establishment"
+    ],
+    "google_types": [
+      "tourist_attraction",
+      "point_of_interest",
+      "establishment"
+    ],
+    "latitude": 36.4399129,
+    "longitude": 28.2106839,
+    "plus_code": "8G8CC6Q6+X7",
+    "formatted_address": "Diagoridon 68, Rodos 851 00, Greece",
+    "vicinity": "Diagoridon 68, Rodos",
+    "price_level": null,
+    "rating": 4.2,
+    "user_ratings_total": 6866,
+    "business_status": "OPERATIONAL",
+    "phone_number": null,
+    "international_phone": null,
+    "website": null,
+    "google_url": "https://maps.google.com/?cid=10995272665915622336",
+    "operating_hours": {
+      "periods": [
+        {
+          "close": {
+            "day": 0,
+            "time": "1800"
+          },
+          "open": {
+            "day": 0,
+            "time": "0900"
+          }
+        },
+        {
+          "close": {
+            "day": 1,
+            "time": "1800"
+          },
+          "open": {
+            "day": 1,
+            "time": "0900"
+          }
+        },
+        {
+          "close": {
+            "day": 2,
+            "time": "1800"
+          },
+          "open": {
+            "day": 2,
+            "time": "0900"
+          }
+        },
+        {
+          "close": {
+            "day": 3,
+            "time": "1800"
+          },
+          "open": {
+            "day": 3,
+            "time": "0900"
+          }
+        },
+        {
+          "close": {
+            "day": 4,
+            "time": "1800"
+          },
+          "open": {
+            "day": 4,
+            "time": "0900"
+          }
+        },
+        {
+          "close": {
+            "day": 5,
+            "time": "1800"
+          },
+          "open": {
+            "day": 5,
+            "time": "1000"
+          }
+        },
+        {
+          "close": {
+            "day": 6,
+            "time": "1800"
+          },
+          "open": {
+            "day": 6,
+            "time": "0930"
+          }
+        }
+      ],
+      "weekday_text": [
+        "Monday: 9:00 AM – 6:00 PM",
+        "Tuesday: 9:00 AM – 6:00 PM",
+        "Wednesday: 9:00 AM – 6:00 PM",
+        "Thursday: 9:00 AM – 6:00 PM",
+        "Friday: 10:00 AM – 6:00 PM",
+        "Saturday: 9:30 AM – 6:00 PM",
+        "Sunday: 9:00 AM – 6:00 PM"
+      ],
+      "open_now": false
+    },
+    "amenities": [
+      "family_friendly",
+      "air_conditioning",
+      "sightseeing",
+      "parking"
+    ],
+    "tags": [],
+    "review_highlights": [
+      "Definitely an experience of your life. You have to do this at least once in your life, to admire the beauty of the Acropolis was simply a Dream come true. We visit in May on Saturday after 6… it was t...",
+      "Shame the actual acropolis is covered by scaffolding but the rest of the site is beautiful the Olympic stadium is remarkably well preserved as well as the oracle but that does look like it has been re...",
+      "Awesome place to visit! Shame about the scaffolding but still an awe inspiring area to wander around. Me and my son even got to explore in some tunnels! Its free the cafe there is good with great food..."
+    ],
+    "wheelchair_accessible": false,
+    "data_sources": [
+      "google_maps"
+    ],
+    "last_updated": 1752011626.6608992,
+    "verification_status": "verified"
+  },
+  {
+    "place_id": "ChIJbxv5FWNhlRQR2S0DevlxlO0",
+    "name": "Μνημείο τον γλάρος",
+    "description": "Μνημείο τον γλάρος is a popular tourist attraction. located in ул.Калимну, Rodos.",
+    "primary_type": "attraction",
+    "secondary_types": [
+      "point_of_interest",
+      "establishment"
+    ],
+    "google_types": [
+      "tourist_attraction",
+      "point_of_interest",
+      "establishment"
+    ],
+    "latitude": 36.4340533,
+    "longitude": 28.2176379,
+    "plus_code": "8G8CC6M9+J3",
+    "formatted_address": "ул.Калимну, Rodos 851 00, Greece",
+    "vicinity": "ул.Калимну, Rodos",
+    "price_level": null,
+    "rating": null,
+    "user_ratings_total": null,
+    "business_status": "OPERATIONAL",
+    "phone_number": null,
+    "international_phone": null,
+    "website": null,
+    "google_url": "https://maps.google.com/?cid=17119433399849922009",
+    "operating_hours": {
+      "periods": [
+        {
+          "open": {
+            "day": 0,
+            "time": "0000"
+          }
+        }
+      ],
+      "weekday_text": [
+        "Monday: Open 24 hours",
+        "Tuesday: Open 24 hours",
+        "Wednesday: Open 24 hours",
+        "Thursday: Open 24 hours",
+        "Friday: Open 24 hours",
+        "Saturday: Open 24 hours",
+        "Sunday: Open 24 hours"
+      ],
+      "open_now": true
+    },
+    "amenities": [
+      "sightseeing"
+    ],
+    "tags": [],
+    "review_highlights": [],
+    "wheelchair_accessible": null,
+    "data_sources": [
+      "google_maps"
+    ],
+    "last_updated": 1752011626.874629,
+    "verification_status": "verified"
+  },
+  {
+    "place_id": "ChIJXe1EqLNhlRQRZfdF2-EOkEE",
+    "name": "Το βενετσιάνικο συντριβάνι",
+    "description": "Το βενετσιάνικο συντριβάνι is a popular tourist attraction. located in пл.Элефтериас, Rodos.",
+    "primary_type": "attraction",
+    "secondary_types": [
+      "point_of_interest",
+      "establishment"
+    ],
+    "google_types": [
+      "tourist_attraction",
+      "point_of_interest",
+      "establishment"
+    ],
+    "latitude": 36.4340533,
+    "longitude": 28.2176379,
+    "plus_code": "8G8CC6M9+J3",
+    "formatted_address": "пл.Элефтериас, Rodos 851 00, Greece",
+    "vicinity": "пл.Элефтериас, Rodos",
+    "price_level": null,
+    "rating": 5,
+    "user_ratings_total": 1,
+    "business_status": "OPERATIONAL",
+    "phone_number": null,
+    "international_phone": null,
+    "website": null,
+    "google_url": "https://maps.google.com/?cid=4724292372320876389",
+    "operating_hours": {
+      "periods": [
+        {
+          "open": {
+            "day": 0,
+            "time": "0000"
+          }
+        }
+      ],
+      "weekday_text": [
+        "Monday: Open 24 hours",
+        "Tuesday: Open 24 hours",
+        "Wednesday: Open 24 hours",
+        "Thursday: Open 24 hours",
+        "Friday: Open 24 hours",
+        "Saturday: Open 24 hours",
+        "Sunday: Open 24 hours"
+      ],
+      "open_now": true
+    },
+    "amenities": [
+      "sightseeing"
+    ],
+    "tags": [],
+    "review_highlights": [],
+    "wheelchair_accessible": null,
+    "data_sources": [
+      "google_maps"
+    ],
+    "last_updated": 1752011627.100045,
+    "verification_status": "verified"
+  },
+  {
+    "place_id": "ChIJYZ9qAo5hlRQR_D61yCRMflU",
+    "name": "Kolymbia Sky",
+    "description": "Kolymbia Sky is a popular tourist attraction. located in Kolymbia, Rodos.",
+    "primary_type": "attraction",
+    "secondary_types": [
+      "point_of_interest",
+      "establishment"
+    ],
+    "google_types": [
+      "tourist_attraction",
+      "point_of_interest",
+      "establishment"
+    ],
+    "latitude": 36.43496309999999,
+    "longitude": 28.2174829,
+    "plus_code": "",
+    "formatted_address": "Kolymbia, Rodos 851 03, Greece",
+    "vicinity": "Kolymbia, Rodos",
+    "price_level": null,
+    "rating": 5,
+    "user_ratings_total": 2,
+    "business_status": "OPERATIONAL",
+    "phone_number": "2241 056271",
+    "international_phone": "+30 2241 056271",
+    "website": null,
+    "google_url": "https://maps.google.com/?cid=6160445061159272188",
+    "operating_hours": null,
+    "amenities": [
+      "sightseeing"
+    ],
+    "tags": [],
+    "review_highlights": [],
+    "wheelchair_accessible": null,
+    "data_sources": [
+      "google_maps"
+    ],
+    "last_updated": 1752011627.3295648,
+    "verification_status": "verified"
+  },
+  {
+    "place_id": "ChIJL-6MRgBhlRQRMbetccIlfKM",
+    "name": "Rhodes",
+    "description": "Rhodes is a popular tourist attraction. located in Rhodes.",
+    "primary_type": "attraction",
+    "secondary_types": [
+      "point_of_interest",
+      "establishment"
+    ],
+    "google_types": [
+      "tourist_attraction",
+      "point_of_interest",
+      "establishment"
+    ],
+    "latitude": 36.4359325,
+    "longitude": 28.2172676,
+    "plus_code": "8G8CC6P8+9W",
+    "formatted_address": "Rhodes 851 00, Greece",
+    "vicinity": "Rhodes",
+    "price_level": null,
+    "rating": 5,
+    "user_ratings_total": 2,
+    "business_status": "OPERATIONAL",
+    "phone_number": null,
+    "international_phone": null,
+    "website": null,
+    "google_url": "https://maps.google.com/?cid=11780332242355468081",
+    "operating_hours": null,
+    "amenities": [
+      "sightseeing",
+      "air_conditioning"
+    ],
+    "tags": [],
+    "review_highlights": [
+      "Beautiful island... we stayed in lindos it was unique especially with the acropolis and roof top restaurants magic...also Rhodes old town is lovely with the grand master Palace with loads of restauran...",
+      "Uma viagem incrível, pela história, pela cultura, pelas paisagens e o mar sem descrição. Um lugar magnífico."
+    ],
+    "wheelchair_accessible": null,
+    "data_sources": [
+      "google_maps"
+    ],
+    "last_updated": 1752011627.556528,
+    "verification_status": "verified"
+  }
+]

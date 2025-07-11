@@ -1,0 +1,11 @@
+{
+  "total_embedded_items": 25333,
+  "collection_name": "rhodes_rag",
+  "embedding_model": "text-embedding-3-small",
+  "vector_dimension": 1536,
+  "source_pois": 2930,
+  "has_spatial_relationships": true,
+  "beach_items_found": 1,
+  "restaurant_items_found": 1,
+  "ready_for_agent_integration": true
+}

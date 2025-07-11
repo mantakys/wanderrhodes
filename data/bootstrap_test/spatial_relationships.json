@@ -1,0 +1,591 @@
+{
+  "spatial_relationships": [
+    {
+      "poi_from": "ChIJSfcuh5FhlRQRqfVB_w9kuo8",
+      "poi_to": "ChIJyd0z049hlRQRebulLRZ37wA",
+      "relationship_type": "walking_distance",
+      "distance_meters": 305,
+      "travel_time_walking": 220,
+      "confidence_score": 0.3885043780937122,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJSfcuh5FhlRQRqfVB_w9kuo8",
+      "poi_to": "ChIJf2yQPZJhlRQRVUncY1kbdEI",
+      "relationship_type": "walking_distance",
+      "distance_meters": 167,
+      "travel_time_walking": 120,
+      "confidence_score": 0.6657145911798776,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJSfcuh5FhlRQRqfVB_w9kuo8",
+      "poi_to": "ChIJXWrwX5JhlRQRxZParoH6Qsc",
+      "relationship_type": "walking_distance",
+      "distance_meters": 328,
+      "travel_time_walking": 236,
+      "confidence_score": 0.3424997562041877,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJSfcuh5FhlRQRqfVB_w9kuo8",
+      "poi_to": "ChIJbxv5FWNhlRQR2S0DevlxlO0",
+      "relationship_type": "walking_distance",
+      "distance_meters": 198,
+      "travel_time_walking": 142,
+      "confidence_score": 0.7038976211272947,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJSfcuh5FhlRQRqfVB_w9kuo8",
+      "poi_to": "ChIJYZ9qAo5hlRQR_D61yCRMflU",
+      "relationship_type": "walking_distance",
+      "distance_meters": 218,
+      "travel_time_walking": 157,
+      "confidence_score": 0.6629234364185689,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJSfcuh5FhlRQRqfVB_w9kuo8",
+      "poi_to": "ChIJL-6MRgBhlRQRMbetccIlfKM",
+      "relationship_type": "walking_distance",
+      "distance_meters": 285,
+      "travel_time_walking": 205,
+      "confidence_score": 0.5281982214179375,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJyd0z049hlRQRebulLRZ37wA",
+      "poi_to": "ChIJf2yQPZJhlRQRVUncY1kbdEI",
+      "relationship_type": "walking_distance",
+      "distance_meters": 374,
+      "travel_time_walking": 269,
+      "confidence_score": 0.2508570520865495,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJyd0z049hlRQRebulLRZ37wA",
+      "poi_to": "ChIJRROAc5JhlRQRVa3gS56uWnE",
+      "relationship_type": "walking_distance",
+      "distance_meters": 257,
+      "travel_time_walking": 185,
+      "confidence_score": 0.4852177717636341,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJyd0z049hlRQRebulLRZ37wA",
+      "poi_to": "ChIJbxv5FWNhlRQR2S0DevlxlO0",
+      "relationship_type": "walking_distance",
+      "distance_meters": 146,
+      "travel_time_walking": 105,
+      "confidence_score": 0.8062533213970332,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJyd0z049hlRQRebulLRZ37wA",
+      "poi_to": "ChIJYZ9qAo5hlRQR_D61yCRMflU",
+      "relationship_type": "walking_distance",
+      "distance_meters": 239,
+      "travel_time_walking": 172,
+      "confidence_score": 0.6205547668455463,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJyd0z049hlRQRebulLRZ37wA",
+      "poi_to": "ChIJL-6MRgBhlRQRMbetccIlfKM",
+      "relationship_type": "walking_distance",
+      "distance_meters": 343,
+      "travel_time_walking": 247,
+      "confidence_score": 0.41205330697784537,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJf2yQPZJhlRQRVUncY1kbdEI",
+      "poi_to": "ChIJXWrwX5JhlRQRxZParoH6Qsc",
+      "relationship_type": "walking_distance",
+      "distance_meters": 168,
+      "travel_time_walking": 121,
+      "confidence_score": 0.6629928093058997,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJf2yQPZJhlRQRVUncY1kbdEI",
+      "poi_to": "ChIJbxv5FWNhlRQR2S0DevlxlO0",
+      "relationship_type": "walking_distance",
+      "distance_meters": 229,
+      "travel_time_walking": 165,
+      "confidence_score": 0.641610085763544,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJf2yQPZJhlRQRVUncY1kbdEI",
+      "poi_to": "ChIJYZ9qAo5hlRQR_D61yCRMflU",
+      "relationship_type": "walking_distance",
+      "distance_meters": 167,
+      "travel_time_walking": 120,
+      "confidence_score": 0.7640213914005142,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJf2yQPZJhlRQRVUncY1kbdEI",
+      "poi_to": "ChIJL-6MRgBhlRQRMbetccIlfKM",
+      "relationship_type": "walking_distance",
+      "distance_meters": 163,
+      "travel_time_walking": 117,
+      "confidence_score": 0.7737387331175817,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJXWrwX5JhlRQRxZParoH6Qsc",
+      "poi_to": "ChIJbxv5FWNhlRQR2S0DevlxlO0",
+      "relationship_type": "walking_distance",
+      "distance_meters": 380,
+      "travel_time_walking": 274,
+      "confidence_score": 0.3388535840327287,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJXWrwX5JhlRQRxZParoH6Qsc",
+      "poi_to": "ChIJYZ9qAo5hlRQR_D61yCRMflU",
+      "relationship_type": "walking_distance",
+      "distance_meters": 294,
+      "travel_time_walking": 211,
+      "confidence_score": 0.5117638273395855,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJXWrwX5JhlRQRxZParoH6Qsc",
+      "poi_to": "ChIJL-6MRgBhlRQRMbetccIlfKM",
+      "relationship_type": "walking_distance",
+      "distance_meters": 220,
+      "travel_time_walking": 158,
+      "confidence_score": 0.6588727005194551,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJRROAc5JhlRQRVa3gS56uWnE",
+      "poi_to": "ChIJbxv5FWNhlRQR2S0DevlxlO0",
+      "relationship_type": "walking_distance",
+      "distance_meters": 398,
+      "travel_time_walking": 286,
+      "confidence_score": 0.30397610669861364,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJRROAc5JhlRQRVa3gS56uWnE",
+      "poi_to": "ChIJYZ9qAo5hlRQR_D61yCRMflU",
+      "relationship_type": "walking_distance",
+      "distance_meters": 495,
+      "travel_time_walking": 357,
+      "confidence_score": 0.10827313327847579,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJbxv5FWNhlRQR2S0DevlxlO0",
+      "poi_to": "ChIJYZ9qAo5hlRQR_D61yCRMflU",
+      "relationship_type": "walking_distance",
+      "distance_meters": 101,
+      "travel_time_walking": 73,
+      "confidence_score": 0.7961799870043209,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJbxv5FWNhlRQR2S0DevlxlO0",
+      "poi_to": "ChIJL-6MRgBhlRQRMbetccIlfKM",
+      "relationship_type": "walking_distance",
+      "distance_meters": 211,
+      "travel_time_walking": 152,
+      "confidence_score": 0.5776875726331712,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJYZ9qAo5hlRQR_D61yCRMflU",
+      "poi_to": "ChIJL-6MRgBhlRQRMbetccIlfKM",
+      "relationship_type": "walking_distance",
+      "distance_meters": 109,
+      "travel_time_walking": 78,
+      "confidence_score": 0.781419953562723,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "existing_rhodes_beyond_the_obvious_hidden_stories_and_secre",
+      "poi_to": "landmark_kallithea_springs",
+      "relationship_type": "visible_from",
+      "distance_meters": 0,
+      "confidence_score": 1.0,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "existing_prophet_elias_monastery_-_faliraki_-",
+      "poi_to": "landmark_anthony_quinn_bay",
+      "relationship_type": "visible_from",
+      "distance_meters": 1315,
+      "confidence_score": 0.5421997069522144,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "existing_prophet_elias_monastery_-_faliraki_-",
+      "poi_to": "landmark_kallithea_springs",
+      "relationship_type": "visible_from",
+      "distance_meters": 1695,
+      "confidence_score": 0.15209958793608802,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "existing_tsaperdona_pizza_pasta_-",
+      "poi_to": "landmark_monte_smith_hill",
+      "relationship_type": "visible_from",
+      "distance_meters": 1891,
+      "confidence_score": 0.05400481329824569,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJSfcuh5FhlRQRqfVB_w9kuo8",
+      "poi_to": "landmark_rhodes_old_town",
+      "relationship_type": "visible_from",
+      "distance_meters": 1162,
+      "confidence_score": 0.41872112563884156,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJSfcuh5FhlRQRqfVB_w9kuo8",
+      "poi_to": "landmark_mandraki_harbor",
+      "relationship_type": "visible_from",
+      "distance_meters": 1927,
+      "confidence_score": 0.2361573223316678,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJSfcuh5FhlRQRqfVB_w9kuo8",
+      "poi_to": "landmark_monte_smith_hill",
+      "relationship_type": "visible_from",
+      "distance_meters": 1133,
+      "confidence_score": 0.43323948882430485,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJSfcuh5FhlRQRqfVB_w9kuo8",
+      "poi_to": "landmark_palace_of_grand_master",
+      "relationship_type": "visible_from",
+      "distance_meters": 1411,
+      "confidence_score": 0.4944125140626066,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJyd0z049hlRQRebulLRZ37wA",
+      "poi_to": "landmark_rhodes_old_town",
+      "relationship_type": "visible_from",
+      "distance_meters": 1444,
+      "confidence_score": 0.2778030739261409,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJyd0z049hlRQRebulLRZ37wA",
+      "poi_to": "landmark_monte_smith_hill",
+      "relationship_type": "visible_from",
+      "distance_meters": 911,
+      "confidence_score": 0.544012129757077,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJyd0z049hlRQRebulLRZ37wA",
+      "poi_to": "landmark_palace_of_grand_master",
+      "relationship_type": "visible_from",
+      "distance_meters": 1651,
+      "confidence_score": 0.3741560644591588,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJf2yQPZJhlRQRVUncY1kbdEI",
+      "poi_to": "landmark_rhodes_old_town",
+      "relationship_type": "visible_from",
+      "distance_meters": 1072,
+      "confidence_score": 0.4638489180011627,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJf2yQPZJhlRQRVUncY1kbdEI",
+      "poi_to": "landmark_mandraki_harbor",
+      "relationship_type": "visible_from",
+      "distance_meters": 1811,
+      "confidence_score": 0.29420885441585004,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJf2yQPZJhlRQRVUncY1kbdEI",
+      "poi_to": "landmark_monte_smith_hill",
+      "relationship_type": "visible_from",
+      "distance_meters": 1067,
+      "confidence_score": 0.4663654099610256,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJf2yQPZJhlRQRVUncY1kbdEI",
+      "poi_to": "landmark_palace_of_grand_master",
+      "relationship_type": "visible_from",
+      "distance_meters": 1282,
+      "confidence_score": 0.5586534376733845,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJXWrwX5JhlRQRxZParoH6Qsc",
+      "poi_to": "landmark_rhodes_old_town",
+      "relationship_type": "visible_from",
+      "distance_meters": 944,
+      "confidence_score": 0.527658888876888,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJXWrwX5JhlRQRxZParoH6Qsc",
+      "poi_to": "landmark_mandraki_harbor",
+      "relationship_type": "visible_from",
+      "distance_meters": 1659,
+      "confidence_score": 0.37006893654349865,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJXWrwX5JhlRQRxZParoH6Qsc",
+      "poi_to": "landmark_monte_smith_hill",
+      "relationship_type": "visible_from",
+      "distance_meters": 1091,
+      "confidence_score": 0.454013355968115,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJXWrwX5JhlRQRxZParoH6Qsc",
+      "poi_to": "landmark_palace_of_grand_master",
+      "relationship_type": "visible_from",
+      "distance_meters": 1124,
+      "confidence_score": 0.6377407047626513,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJRROAc5JhlRQRVa3gS56uWnE",
+      "poi_to": "landmark_rhodes_old_town",
+      "relationship_type": "visible_from",
+      "distance_meters": 1666,
+      "confidence_score": 0.1669788972090155,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJRROAc5JhlRQRVa3gS56uWnE",
+      "poi_to": "landmark_monte_smith_hill",
+      "relationship_type": "visible_from",
+      "distance_meters": 1002,
+      "confidence_score": 0.49866187395173944,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJRROAc5JhlRQRVa3gS56uWnE",
+      "poi_to": "landmark_palace_of_grand_master",
+      "relationship_type": "visible_from",
+      "distance_meters": 1897,
+      "confidence_score": 0.2513364593635528,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJR4yxdothlRQRwIN29DsOl5g",
+      "poi_to": "landmark_rhodes_old_town",
+      "relationship_type": "visible_from",
+      "distance_meters": 1461,
+      "confidence_score": 0.5693778593788621,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJR4yxdothlRQRwIN29DsOl5g",
+      "poi_to": "landmark_mandraki_harbor",
+      "relationship_type": "visible_from",
+      "distance_meters": 1918,
+      "confidence_score": 0.5409172543390658,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJR4yxdothlRQRwIN29DsOl5g",
+      "poi_to": "landmark_monte_smith_hill",
+      "relationship_type": "visible_from",
+      "distance_meters": 618,
+      "confidence_score": 0.9906401134477116,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJR4yxdothlRQRwIN29DsOl5g",
+      "poi_to": "landmark_palace_of_grand_master",
+      "relationship_type": "visible_from",
+      "distance_meters": 1388,
+      "confidence_score": 0.8055465955909642,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJbxv5FWNhlRQR2S0DevlxlO0",
+      "poi_to": "landmark_rhodes_old_town",
+      "relationship_type": "visible_from",
+      "distance_meters": 1301,
+      "confidence_score": 0.34943467998472144,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJbxv5FWNhlRQR2S0DevlxlO0",
+      "poi_to": "landmark_monte_smith_hill",
+      "relationship_type": "visible_from",
+      "distance_meters": 943,
+      "confidence_score": 0.5284457059823753,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJbxv5FWNhlRQR2S0DevlxlO0",
+      "poi_to": "landmark_palace_of_grand_master",
+      "relationship_type": "visible_from",
+      "distance_meters": 1504,
+      "confidence_score": 0.44752665485000714,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJYZ9qAo5hlRQR_D61yCRMflU",
+      "poi_to": "landmark_rhodes_old_town",
+      "relationship_type": "visible_from",
+      "distance_meters": 1231,
+      "confidence_score": 0.38442438097029974,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJYZ9qAo5hlRQR_D61yCRMflU",
+      "poi_to": "landmark_mandraki_harbor",
+      "relationship_type": "visible_from",
+      "distance_meters": 1953,
+      "confidence_score": 0.22308515919739474,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJYZ9qAo5hlRQR_D61yCRMflU",
+      "poi_to": "landmark_monte_smith_hill",
+      "relationship_type": "visible_from",
+      "distance_meters": 922,
+      "confidence_score": 0.5389247488829696,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJYZ9qAo5hlRQR_D61yCRMflU",
+      "poi_to": "landmark_palace_of_grand_master",
+      "relationship_type": "visible_from",
+      "distance_meters": 1416,
+      "confidence_score": 0.49165837560127473,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJL-6MRgBhlRQRMbetccIlfKM",
+      "poi_to": "landmark_rhodes_old_town",
+      "relationship_type": "visible_from",
+      "distance_meters": 1164,
+      "confidence_score": 0.41752334998546436,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJL-6MRgBhlRQRMbetccIlfKM",
+      "poi_to": "landmark_mandraki_harbor",
+      "relationship_type": "visible_from",
+      "distance_meters": 1868,
+      "confidence_score": 0.2658233518046807,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJL-6MRgBhlRQRMbetccIlfKM",
+      "poi_to": "landmark_monte_smith_hill",
+      "relationship_type": "visible_from",
+      "distance_meters": 907,
+      "confidence_score": 0.5462853635188847,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "poi_from": "ChIJL-6MRgBhlRQRMbetccIlfKM",
+      "poi_to": "landmark_palace_of_grand_master",
+      "relationship_type": "visible_from",
+      "distance_meters": 1326,
+      "confidence_score": 0.5366284146159528,
+      "created_by": "spatial_extractor"
+    }
+  ],
+  "poi_clusters": [
+    {
+      "cluster_id": "cluster_attraction_1",
+      "cluster_name": "Rhodes Tourist Quarter",
+      "cluster_type": "attraction_area",
+      "center_lat": 36.43498296666667,
+      "center_lng": 28.217462800000003,
+      "primary_activity": "sightseeing",
+      "poi_count": 3,
+      "poi_ids": [
+        "ChIJbxv5FWNhlRQR2S0DevlxlO0",
+        "ChIJYZ9qAo5hlRQR_D61yCRMflU",
+        "ChIJL-6MRgBhlRQRMbetccIlfKM"
+      ],
+      "created_by": "spatial_extractor"
+    }
+  ],
+  "geographic_hierarchy": [
+    {
+      "child_id": "existing_rhodes_beyond_the_obvious_hidden_stories_and_secre",
+      "parent_area": "Faliraki",
+      "hierarchy_type": "administrative",
+      "level": 2,
+      "distance_from_center": 1695,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "child_id": "existing_rhodes_beyond_the_obvious_hidden_stories_and_secre",
+      "parent_area": "Kallithea",
+      "hierarchy_type": "administrative",
+      "level": 2,
+      "distance_from_center": 0,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "child_id": "existing_rentals_cruises_-",
+      "parent_area": "Rhodes Old Town",
+      "hierarchy_type": "administrative",
+      "level": 2,
+      "distance_from_center": 188,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "child_id": "existing_rentals_cruises_-",
+      "parent_area": "New Town Rhodes",
+      "hierarchy_type": "administrative",
+      "level": 2,
+      "distance_from_center": 779,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "child_id": "existing_local_tips_archives_-",
+      "parent_area": "Lindos",
+      "hierarchy_type": "administrative",
+      "level": 2,
+      "distance_from_center": 0,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "child_id": "existing_prophet_elias_monastery_-_faliraki_-",
+      "parent_area": "Faliraki",
+      "hierarchy_type": "administrative",
+      "level": 2,
+      "distance_from_center": 0,
+      "created_by": "spatial_extractor"
+    },
+    {
+      "child_id": "existing_tsaperdona_pizza_pasta_-",
+      "parent_area": "Ixia",
+      "hierarchy_type": "administrative",
+      "level": 2,
+      "distance_from_center": 0,
+      "created_by": "spatial_extractor"
+    }
+  ],
+  "summary": {
+    "total_relationships": 60,
+    "adjacent_relationships": 0,
+    "containment_relationships": 0,
+    "walking_relationships": 23,
+    "visibility_relationships": 37,
+    "poi_clusters": 1,
+    "hierarchy_entries": 7
+  }
+}
