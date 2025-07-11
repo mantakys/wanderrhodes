@@ -141,24 +141,48 @@ async function executeSQL(client, sql, description) {
 
 // Load JSON data files - using proper paths for Vercel
 function loadDataFile(filename) {
+  console.log(`🔍 Debug info for ${filename}:`);
+  console.log(`  - process.cwd(): ${process.cwd()}`);
+  console.log(`  - __dirname: ${__dirname}`);
+  console.log(`  - import.meta.url: ${import.meta.url}`);
+  
   // Try multiple path strategies for Vercel deployment
   const possiblePaths = [
     path.join(process.cwd(), filename),
     path.join(__dirname, '..', filename),
-    path.join('/var/task', filename)
+    path.join('/var/task', filename),
+    path.join('/var/task', '..', filename),
+    filename  // Try relative path as-is
   ];
+  
+  console.log(`🔍 Trying paths: ${possiblePaths.join(', ')}`);
   
   let filepath = null;
   let data = null;
   
   for (const testPath of possiblePaths) {
+    console.log(`  Testing: ${testPath} - exists: ${fs.existsSync(testPath)}`);
     if (fs.existsSync(testPath)) {
       filepath = testPath;
+      console.log(`  ✅ Found at: ${filepath}`);
       break;
     }
   }
   
   if (!filepath) {
+    // List directory contents for debugging
+    try {
+      console.log(`🔍 Directory contents of ${process.cwd()}:`);
+      const files = fs.readdirSync(process.cwd());
+      console.log(files.join(', '));
+      
+      console.log(`🔍 Directory contents of /var/task:`);
+      const taskFiles = fs.readdirSync('/var/task');
+      console.log(taskFiles.join(', '));
+    } catch (e) {
+      console.log(`❌ Error reading directories: ${e.message}`);
+    }
+    
     throw new Error(`Data file not found: ${filename}. Tried paths: ${possiblePaths.join(', ')}`);
   }
   
