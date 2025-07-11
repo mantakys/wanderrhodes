@@ -15,7 +15,9 @@
     "migrate:enhanced-data": "node scripts/migrate_enhanced_data_production.js",
     "test:poi-data": "node -e \"import('./backend/enhanced-chat-tools.js').then(m => m.getSystemStatus().then(s => console.log('System Status:', JSON.stringify(s, null, 2))))\"",
     "verify:database": "node -e \"import('./backend/db-adapter.js').then(m => m.isPOIDataAvailable().then(r => console.log('POI Data Available:', r)))\"",
-    "validate:migration": "node scripts/validate_migration_data.js"
+    "validate:migration": "node scripts/validate_migration_data.js",
+    "migrate:production": "node scripts/run_production_migration.js",
+    "verify:production": "curl -s $DOMAIN/api/verify-enhanced-data | jq ."
   },
   "dependencies": {
     "@langchain/core": "^0.3.61",
@@ -55,6 +57,7 @@
     "mailgun-js": "^0.22.0",
     "mailgun.js": "^12.0.3",
     "mapbox-gl": "^2.15.0",
+    "node-fetch": "^3.3.2",
     "nodemailer": "^6.9.9",
     "npm": "^11.4.2",
     "openai": "^4.103.0",
