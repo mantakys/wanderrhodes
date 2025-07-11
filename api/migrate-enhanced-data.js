@@ -7,9 +7,14 @@
  * Body: { "confirm": true }
  */
 
-const fs = require('fs');
-const path = require('path');
-const { Pool } = require('pg');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import pkg from 'pg';
+
+const { Pool } = pkg;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Simple admin token check (use a strong secret in production)
 const ADMIN_TOKEN = process.env.ADMIN_MIGRATION_TOKEN || 'change-this-secret';
@@ -134,16 +139,31 @@ async function executeSQL(client, sql, description) {
   }
 }
 
-// Load JSON data files
+// Load JSON data files - using proper paths for Vercel
 function loadDataFile(filename) {
-  const filepath = path.join(process.cwd(), filename);
+  // Try multiple path strategies for Vercel deployment
+  const possiblePaths = [
+    path.join(process.cwd(), filename),
+    path.join(__dirname, '..', filename),
+    path.join('/var/task', filename)
+  ];
   
-  if (!fs.existsSync(filepath)) {
-    throw new Error(`Data file not found: ${filepath}`);
+  let filepath = null;
+  let data = null;
+  
+  for (const testPath of possiblePaths) {
+    if (fs.existsSync(testPath)) {
+      filepath = testPath;
+      break;
+    }
   }
   
-  console.log(`📄 Loading ${filename}...`);
-  const data = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+  if (!filepath) {
+    throw new Error(`Data file not found: ${filename}. Tried paths: ${possiblePaths.join(', ')}`);
+  }
+  
+  console.log(`📄 Loading ${filename} from ${filepath}...`);
+  data = JSON.parse(fs.readFileSync(filepath, 'utf8'));
   console.log(`✅ Loaded ${Array.isArray(data) ? data.length : Object.keys(data).length} records from ${filename}`);
   
   return data;
