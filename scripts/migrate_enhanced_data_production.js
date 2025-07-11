@@ -4,6 +4,7 @@
  * Production Data Migration Script
  * Migrates enhanced POI dataset and spatial relationships to PostgreSQL
  * Works with POSTGRES_POSTGRES_* environment variables
+ * RUNS LOCALLY - connects to production database with local data files
  */
 
 import fs from 'fs';
@@ -49,6 +50,7 @@ if (!DATABASE_URL) {
 
 console.log('🚀 Starting enhanced data migration to production PostgreSQL...');
 console.log('🔗 Database URL detected:', DATABASE_URL ? 'Set' : 'Missing');
+console.log('📁 Running locally with access to data files...');
 
 const pool = new Pool({
   connectionString: DATABASE_URL,
@@ -370,6 +372,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   runMigration()
     .then(() => {
       console.log('\n🎯 Migration completed successfully!');
+      console.log('🔗 Verify by running: npm run verify:production');
       process.exit(0);
     })
     .catch((error) => {
