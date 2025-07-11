@@ -27,7 +27,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Helper to authenticate user from cookie
 function authenticateUser(req) {
-  const token = req.cookies?.authToken;
+  const token = req.cookies?.jwt;
   if (!token) {
     throw new Error('No authentication token');
   }
@@ -41,8 +41,8 @@ function authenticateUser(req) {
 }
 
 // Helper to get user ID from email
-function getUserId(email) {
-  const user = getUserByEmail(email);
+async function getUserId(email) {
+  const user = await getUserByEmail(email);
   if (!user) {
     throw new Error('User not found');
   }
@@ -58,7 +58,7 @@ export default async function handler(req, res) {
   try {
     // Authenticate user
     const userAuth = authenticateUser(req);
-    const userId = getUserId(userAuth.email);
+    const userId = await getUserId(userAuth.email);
     
     const { action, data } = req.body;
 
