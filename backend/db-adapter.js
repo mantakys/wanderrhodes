@@ -24,10 +24,19 @@ function hasPostgresConfig() {
 const isProduction = process.env.NODE_ENV === 'production' || hasPostgresConfig();
 
 let db;
+let poiDB = null;
 
 if (isProduction && hasPostgresConfig()) {
   console.log('🐘 Using Neon PostgreSQL for production');
   db = await import('./db-neon.js');
+  
+  // Import POI functions for production
+  try {
+    poiDB = await import('./db-poi.js');
+    console.log('📍 POI database functions loaded');
+  } catch (error) {
+    console.warn('⚠️ POI database functions not available:', error.message);
+  }
 } else {
   console.log('🗄️ Using SQLite for development');  
   db = await import('./db.js');
@@ -53,4 +62,19 @@ export const getUserChatHistory = db.getUserChatHistory;
 export const clearUserChatHistory = db.clearUserChatHistory;
 export const saveUserPreferences = db.saveUserPreferences;
 export const getUserPreferences = db.getUserPreferences;
-export const close = db.close; 
+export const close = db.close;
+
+// Export POI functions if available
+export const isPOIDataAvailable = poiDB?.isPOIDataAvailable || (() => Promise.resolve(false));
+export const searchPOIsByType = poiDB?.searchPOIsByType || null;
+export const getNearbyPOIs = poiDB?.getNearbyPOIs || null;
+export const getSpatialRelationships = poiDB?.getSpatialRelationships || null;
+export const getAdjacentPOIs = poiDB?.getAdjacentPOIs || null;
+export const getWalkingDistancePOIs = poiDB?.getWalkingDistancePOIs || null;
+export const getPOIClustersNear = poiDB?.getPOIClustersNear || null;
+export const searchPOIsAdvanced = poiDB?.searchPOIsAdvanced || null;
+export const getPOIStatistics = poiDB?.getPOIStatistics || null;
+export const findPOIByNameAndLocation = poiDB?.findPOIByNameAndLocation || null;
+
+// Helper function to check if POI features are available
+export const hasPOIFeatures = () => poiDB !== null; 

@@ -11,7 +11,11 @@
     "test-agent": "node backend/test-agent.js",
     "test-agent-config": "node -e \"import('./backend/config/agentConfig.js').then(m => console.log('Config status:', m.getConfigStatus()))\"",
     "migrate:neon": "node scripts/migrate-to-neon.js",
-    "setup:neon": "echo 'Add POSTGRES_POSTGRES_URL (or individual POSTGRES_POSTGRES_* components) to your .env file with your Neon PostgreSQL connection'"
+    "setup:neon": "echo 'Add POSTGRES_POSTGRES_URL (or individual POSTGRES_POSTGRES_* components) to your .env file with your Neon PostgreSQL connection'",
+    "migrate:enhanced-data": "node scripts/migrate_enhanced_data_production.js",
+    "test:poi-data": "node -e \"import('./backend/enhanced-chat-tools.js').then(m => m.getSystemStatus().then(s => console.log('System Status:', JSON.stringify(s, null, 2))))\"",
+    "verify:database": "node -e \"import('./backend/db-adapter.js').then(m => m.isPOIDataAvailable().then(r => console.log('POI Data Available:', r)))\"",
+    "validate:migration": "node scripts/validate_migration_data.js"
   },
   "dependencies": {
     "@langchain/core": "^0.3.61",
