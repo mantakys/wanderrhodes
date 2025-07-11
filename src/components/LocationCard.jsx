@@ -41,7 +41,7 @@ const LocationCard = ({ location }) => {
           
           console.log(`🔍 Searching for photo: ${query}`);
           
-          const res = await fetch(`${endpoint}?query=${encodeURIComponent(query)}`, {
+          const res = await fetch(`${endpoint}&query=${encodeURIComponent(query)}`, {
             signal: AbortSignal.timeout(15000) // 15 second timeout
           });
           
