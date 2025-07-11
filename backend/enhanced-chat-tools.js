@@ -10,7 +10,8 @@ import {
   getWalkingDistancePOIs,
   searchPOIsAdvanced,
   isPOIDataAvailable,
-  hasPOIFeatures 
+  hasPOIFeatures,
+  getPOIStatistics
 } from './db-adapter.js';
 
 // Check if enhanced features are available
@@ -333,7 +334,12 @@ export async function getSystemStatus() {
     }
     
     // Get POI statistics if available
-    const stats = await getPOIStatistics?.() || {};
+    let stats = {};
+    try {
+      stats = await getPOIStatistics();
+    } catch (error) {
+      console.warn('⚠️ Could not fetch POI statistics:', error.message);
+    }
     
     return {
       status: 'enhanced',
