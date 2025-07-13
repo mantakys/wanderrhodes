@@ -118,7 +118,7 @@ const DEFAULT_FALLBACK_POIS = [
 /**
  * Get initial POI recommendations based on user location
  */
-export async function getInitialRecommendations({ userLocation, userPreferences = {} }) {
+export async function getInitialRecommendations({ userLocation, userPreferences = {}, selectedPOIs = [] }) {
   debugLog(`Getting initial recommendations`, { 
     hasLocation: !!userLocation,
     userLocation: userLocation || 'none',
@@ -127,6 +127,9 @@ export async function getInitialRecommendations({ userLocation, userPreferences 
 
   // Determine search location
   const searchLocation = userLocation || RHODES_CENTER;
+  // Gather exclude lists
+  const excludeNames = selectedPOIs.map(poi => poi.name);
+  const excludeIds = selectedPOIs.map(poi => poi.place_id || poi.id).filter(Boolean);
   
   try {
     // Check if enhanced features are available
@@ -140,7 +143,9 @@ export async function getInitialRecommendations({ userLocation, userPreferences 
         lng: searchLocation.lng,
         userPreferences,
         timeOfDay: 'morning', // Default to morning for initial recommendations
-        activityType: 'sightseeing' // Default to sightseeing for first step
+        activityType: 'sightseeing', // Default to sightseeing for first step
+        excludeNames,
+        excludeIds
       });
 
       if (recommendations && recommendations.length > 0) {
@@ -163,20 +168,27 @@ export async function getInitialRecommendations({ userLocation, userPreferences 
       fallbackCount: DEFAULT_FALLBACK_POIS.length 
     });
 
+    // Filter out already selected POIs from fallback
+    const fallbackRecommendations = DEFAULT_FALLBACK_POIS.filter(poi =>
+      !excludeNames.includes(poi.name) && (!poi.place_id || !excludeIds.includes(poi.place_id))
+    );
+
     return {
       success: true,
-      recommendations: DEFAULT_FALLBACK_POIS,
+      recommendations: fallbackRecommendations.slice(0, 5),
       source: 'fallback_default',
       location: searchLocation
     };
 
   } catch (error) {
     debugLog(`Error getting initial recommendations: ${error.message}`);
-    
     // Final fallback to default POIs
+    const fallbackRecommendations = DEFAULT_FALLBACK_POIS.filter(poi =>
+      !excludeNames.includes(poi.name) && (!poi.place_id || !excludeIds.includes(poi.place_id))
+    );
     return {
       success: true,
-      recommendations: DEFAULT_FALLBACK_POIS,
+      recommendations: fallbackRecommendations.slice(0, 5),
       source: 'fallback_error',
       location: searchLocation,
       error: error.message
@@ -387,7 +399,7 @@ export default async function stepHandler(req, res) {
 
     switch (step) {
       case 'GET_INITIAL_RECOMMENDATIONS':
-        result = await getInitialRecommendations({ userLocation, userPreferences });
+        result = await getInitialRecommendations({ userLocation, userPreferences, selectedPOIs });
         break;
 
       case 'GET_NEXT_RECOMMENDATIONS':
