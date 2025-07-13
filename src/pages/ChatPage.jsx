@@ -239,7 +239,7 @@ export default function ChatPage() {
   const [lastResponse, setLastResponse] = useState(null);
   
   // Step-by-step planner state
-  const [stepByStepMode, setStepByStepMode] = useState(false);
+  const [stepByStepMode, setStepByStepMode] = useState(true);
   const [stepByStepPlan, setStepByStepPlan] = useState([]);
   
   // Server error handling state
@@ -510,26 +510,12 @@ export default function ChatPage() {
       handlePreferencesUpdate(preferences);
       setShowPreferences(false);
       
-      // For new plans with preferences, automatically enter step-by-step mode
-      if (isNewPlan && user?.has_paid && preferences.numberOfPOIs) {
-        setStepByStepMode(true);
-        toast({
-          title: "Let's build your perfect day! 🚀",
-          description: "Now you can choose each place you want to visit, step by step.",
-          duration: 4000,
-        });
-        return;
-      }
-      
-      // Create preference summary and continue conversation
-      const prefSummary = `I've updated my preferences: 
-        Budget: ${preferences.budget}, 
-        Interests: ${preferences.interests?.join(', ')}, 
-        Time preferences: ${preferences.timeOfDay?.join(', ')}, 
-        Group: ${preferences.groupSize}${preferences.numberOfPOIs ? `, Places to visit: ${preferences.numberOfPOIs}` : ''}. 
-        Please update my travel plan based on these preferences.`;
-      
-      handleSend(prefSummary, true);
+      // Always show step-by-step mode confirmation since we're now in step-by-step mode by default
+      toast({
+        title: "Let's build your perfect day! 🚀",
+        description: "Now you can choose each place you want to visit, step by step.",
+        duration: 4000,
+      });
     } else {
       setShowPreferences(false);
     }
@@ -585,13 +571,6 @@ export default function ChatPage() {
   };
 
   // Step-by-step planner handlers
-  const handleStepByStepToggle = () => {
-    setStepByStepMode(!stepByStepMode);
-    if (!stepByStepMode) {
-      // Reset step-by-step plan when entering mode
-      setStepByStepPlan([]);
-    }
-  };
 
   const handleStepByStepPlanUpdate = (updatedPlan) => {
     setStepByStepPlan(updatedPlan);
@@ -933,22 +912,6 @@ export default function ChatPage() {
 
         {/* right buttons */}
         <div className="flex gap-2 items-center">
-          {/* Step-by-step mode toggle */}
-          {user?.has_paid && (
-            <button
-              onClick={handleStepByStepToggle}
-              disabled={isTyping}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition border ${
-                stepByStepMode
-                  ? 'bg-yellow-500/20 border-yellow-400 text-yellow-300'
-                  : 'bg-white/10 border-white/20 text-white/70 hover:border-white/40 hover:text-white'
-              } ${isTyping ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-              title={stepByStepMode ? "Switch to chat mode" : "Switch to step-by-step mode"}
-            >
-              {stepByStepMode ? '💬 Chat' : '🎯 Step-by-Step'}
-            </button>
-          )}
-          
           <button
             onClick={() => {
               if (isTyping) {
