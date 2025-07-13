@@ -15,15 +15,18 @@ import {
   findPOIByNameAndLocation
 } from './db-adapter.js';
 
-// Debug logging configuration
-const DEBUG_ENABLED = process.env.NODE_ENV === 'development' || process.env.ENHANCED_CHAT_DEBUG === 'true';
+// Debug logging configuration - Enable in production for workflow tracking
+const DEBUG_ENABLED = true; // Always enabled to track production workflow
 const debugLog = (message, data = null) => {
-  if (DEBUG_ENABLED) {
-    const timestamp = new Date().toISOString();
-    console.log(`🔍 [${timestamp}] ENHANCED_CHAT_DEBUG: ${message}`);
-    if (data) {
-      console.log(`🔍 [${timestamp}] DATA:`, JSON.stringify(data, null, 2));
-    }
+  const timestamp = new Date().toISOString();
+  const prefix = process.env.NODE_ENV === 'production' ? '🚀 PROD_ENHANCED' : '🔍 DEV_ENHANCED';
+  console.log(`${prefix} [${timestamp}] ${message}`);
+  if (data) {
+    // In production, limit data output to prevent log spam
+    const maxLength = process.env.NODE_ENV === 'production' ? 500 : 2000;
+    const dataStr = JSON.stringify(data, null, process.env.NODE_ENV === 'production' ? 0 : 2);
+    const truncatedData = dataStr.length > maxLength ? dataStr.substring(0, maxLength) + '...[TRUNCATED]' : dataStr;
+    console.log(`${prefix} [${timestamp}] DATA:`, truncatedData);
   }
 };
 
@@ -54,11 +57,15 @@ export async function getEnhancedNearbyPlaces({ lat, lng, type = 'restaurant', r
       throw new Error('Enhanced POI data not available');
     }
     
-    debugLog(`Enhanced nearby places search`, { lat, lng, type, radius });
+    debugLog(`🎯 Enhanced nearby places search with spatial intelligence`, { lat, lng, type, radius });
     
     // Search for POIs of the specified type
     const pois = await searchPOIsByType(type, lat, lng, radius, 10);
-    debugLog(`Initial POI search result`, { resultCount: pois?.length || 0 });
+    debugLog(`🔍 PostgreSQL POI search result`, { 
+      resultCount: pois?.length || 0,
+      searchType: 'searchPOIsByType',
+      database: 'POSTGRESQL_ENHANCED'
+    });
     
     if (!pois || pois.length === 0) {
       debugLog(`No POIs found for type ${type}, trying broader search`);
@@ -76,7 +83,7 @@ export async function getEnhancedNearbyPlaces({ lat, lng, type = 'restaurant', r
     }
     
     // Enhance results with spatial context
-    debugLog(`Enhancing ${pois.length} POIs with spatial context`);
+    debugLog(`🔗 Enhancing ${pois.length} POIs with spatial relationships`);
     const enhancedPois = await Promise.all(
       pois.map(async (poi) => {
         try {
@@ -84,9 +91,11 @@ export async function getEnhancedNearbyPlaces({ lat, lng, type = 'restaurant', r
           const adjacent = await getAdjacentPOIs(poi.id, 3);
           const walkingDistance = await getWalkingDistancePOIs(poi.id, 5);
           
-          debugLog(`Spatial context for POI ${poi.id}`, { 
+          debugLog(`🌐 Spatial context for ${poi.name}`, { 
+            poiId: poi.id,
             adjacentCount: adjacent?.length || 0,
-            walkingDistanceCount: walkingDistance?.length || 0 
+            walkingDistanceCount: walkingDistance?.length || 0,
+            spatialIntelligence: 'ACTIVE'
           });
           
           return {

@@ -18,15 +18,18 @@ const execFileAsync = promisify(execFile);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ajv = new Ajv();
 
-// Debug logging configuration
-const DEBUG_ENABLED = process.env.NODE_ENV === 'development' || process.env.CHAT_DEBUG === 'true';
+// Debug logging configuration - Enable in production for workflow tracking
+const DEBUG_ENABLED = true; // Always enabled to track production workflow
 const debugLog = (message, data = null) => {
-  if (DEBUG_ENABLED) {
-    const timestamp = new Date().toISOString();
-    console.log(`🔍 [${timestamp}] CHAT_DEBUG: ${message}`);
-    if (data) {
-      console.log(`🔍 [${timestamp}] DATA:`, JSON.stringify(data, null, 2));
-    }
+  const timestamp = new Date().toISOString();
+  const prefix = process.env.NODE_ENV === 'production' ? '🚀 PROD_CHAT' : '🔍 DEV_CHAT';
+  console.log(`${prefix} [${timestamp}] ${message}`);
+  if (data) {
+    // In production, limit data output to prevent log spam
+    const maxLength = process.env.NODE_ENV === 'production' ? 500 : 2000;
+    const dataStr = JSON.stringify(data, null, process.env.NODE_ENV === 'production' ? 0 : 2);
+    const truncatedData = dataStr.length > maxLength ? dataStr.substring(0, maxLength) + '...[TRUNCATED]' : dataStr;
+    console.log(`${prefix} [${timestamp}] DATA:`, truncatedData);
   }
 };
 
@@ -34,21 +37,25 @@ const debugLog = (message, data = null) => {
 async function getNearbyPlaces(params) {
   const { lat, lng, radius = 1000, type = 'restaurant' } = params;
   
-  debugLog(`getNearbyPlaces called`, { lat, lng, radius, type });
+  debugLog(`🎯 getNearbyPlaces called`, { lat, lng, radius, type });
   
   try {
     // Check if enhanced features are available
     const hasEnhanced = await hasEnhancedFeatures();
-    debugLog(`Enhanced features available: ${hasEnhanced}`);
+    debugLog(`🔍 Enhanced features check result: ${hasEnhanced}`);
     
     if (hasEnhanced) {
-      debugLog(`Using enhanced spatial POI search`);
+      debugLog(`🚀 USING ENHANCED SPATIAL POI SEARCH with 2,930+ POIs`);
       
       // Try enhanced search first
       const enhancedResults = await getEnhancedNearbyPlaces({ lat, lng, type, radius });
       
       if (enhancedResults && enhancedResults.length > 0) {
-        debugLog(`Enhanced search successful`, { resultCount: enhancedResults.length });
+        debugLog(`✅ Enhanced search successful`, { 
+          resultCount: enhancedResults.length,
+          sampleResult: enhancedResults[0]?.name,
+          hasSpatialContext: !!enhancedResults[0]?.spatialContext
+        });
         
         // Transform enhanced results to match expected format
         const transformedResults = enhancedResults.map(poi => ({
@@ -81,21 +88,30 @@ async function getNearbyPlaces(params) {
     }
     
     // Fallback to basic Mapbox search
-    debugLog(`Using fallback Mapbox search`);
+    debugLog(`⚠️ FALLING BACK TO BASIC MAPBOX SEARCH (no enhanced POI data)`);
     const fallbackResults = await mapboxGetNearbyPlaces({ lat, lng, radius, type });
-    debugLog(`Fallback search result`, { resultCount: fallbackResults?.length || 0 });
+    debugLog(`📍 Mapbox fallback result`, { 
+      resultCount: fallbackResults?.length || 0,
+      sampleResult: fallbackResults?.[0]?.name,
+      source: 'MAPBOX_BASIC'
+    });
     
     return fallbackResults;
     
   } catch (error) {
-    debugLog(`getNearbyPlaces error: ${error.message}`);
+    debugLog(`❌ getNearbyPlaces error: ${error.message}`);
     
     // Final fallback to basic Mapbox
     try {
-      debugLog(`Emergency fallback to basic Mapbox`);
-      return await mapboxGetNearbyPlaces({ lat, lng, radius, type });
+      debugLog(`🆘 EMERGENCY FALLBACK to basic Mapbox`);
+      const emergencyResults = await mapboxGetNearbyPlaces({ lat, lng, radius, type });
+      debugLog(`🆘 Emergency fallback result`, { 
+        resultCount: emergencyResults?.length || 0,
+        source: 'MAPBOX_EMERGENCY'
+      });
+      return emergencyResults;
     } catch (fallbackError) {
-      debugLog(`Emergency fallback failed: ${fallbackError.message}`);
+      debugLog(`💥 Emergency fallback failed: ${fallbackError.message}`);
       throw new Error(`Both enhanced and fallback search failed: ${error.message}`);
     }
   }
@@ -185,12 +201,18 @@ export default async function chatHandler(req, res) {
     hasHistory: history.length > 0,
     promptLength: prompt?.length || 0,
     hasUserLocation: !!userLocation,
-    hasUserPreferences: Object.keys(userPreferences).length > 0
+    hasUserPreferences: Object.keys(userPreferences).length > 0,
+    prompt: prompt?.substring(0, 100) + (prompt?.length > 100 ? '...' : '')
   });
 
   // Check enhanced features status
   const hasEnhanced = await hasEnhancedFeatures();
   debugLog(`Enhanced POI system status: ${hasEnhanced ? 'ACTIVE' : 'INACTIVE'}`);
+  debugLog(`Database environment`, { 
+    nodeEnv: process.env.NODE_ENV,
+    hasPostgresUrl: !!process.env.POSTGRES_POSTGRES_URL,
+    hasDatabaseUrl: !!process.env.DATABASE_URL
+  });
 
   // 1) Retrieve RAG context (disabled)
   // NOTE: Temporarily disabling the knowledge-base retrieval while we refine the RAG pipeline.
@@ -420,30 +442,46 @@ Begin by gathering any missing details from the user, then plan a personalized i
     const responseMessage = completion.choices[0].message;
     messages.push(responseMessage);
 
-    if (responseMessage.tool_calls) {
-      debugLog(`Tool calls requested`, { toolCallCount: responseMessage.tool_calls.length });
+        if (responseMessage.tool_calls) {
+      debugLog(`Tool calls requested`, { 
+        toolCallCount: responseMessage.tool_calls.length,
+        toolNames: responseMessage.tool_calls.map(tc => tc.function.name)
+      });
       const toolCalls = responseMessage.tool_calls;
       
       const toolResults = await Promise.all(
         toolCalls.map(async (toolCall) => {
           const { name, arguments: args } = toolCall.function;
           const parsedArgs = JSON.parse(args);
-          debugLog(`Executing tool: ${name}`, parsedArgs);
+          debugLog(`🔧 Executing tool: ${name}`, parsedArgs);
           
           let result;
+          const toolStartTime = Date.now();
           try {
-                         if (name === "getNearbyPlaces") {
-               result = await getNearbyPlaces(parsedArgs);
-             } else if (name === "getTravelTime") {
-               result = await getTravelTime(parsedArgs);
-             } else if (name === "getContextualRecommendations") {
-               result = await getContextualRecommendationsTool(parsedArgs);
-             }
+            if (name === "getNearbyPlaces") {
+              debugLog(`➡️ Calling enhanced getNearbyPlaces with spatial intelligence`);
+              result = await getNearbyPlaces(parsedArgs);
+            } else if (name === "getTravelTime") {
+              debugLog(`➡️ Calling getTravelTime for route calculation`);
+              result = await getTravelTime(parsedArgs);
+            } else if (name === "getContextualRecommendations") {
+              debugLog(`➡️ Calling contextual recommendations with user preferences`);
+              result = await getContextualRecommendationsTool(parsedArgs);
+            }
             
-            debugLog(`Tool ${name} success`, { resultCount: result?.length || 'N/A' });
+            const executionTime = Date.now() - toolStartTime;
+            debugLog(`✅ Tool ${name} success`, { 
+              resultCount: result?.length || 'N/A',
+              executionTime: `${executionTime}ms`,
+              hasEnhancedFields: result?.[0]?.spatialContext ? 'YES' : 'NO'
+            });
             
           } catch (error) {
-            debugLog(`Tool ${name} error: ${error.message}`);
+            const executionTime = Date.now() - toolStartTime;
+            debugLog(`❌ Tool ${name} error: ${error.message}`, { 
+              executionTime: `${executionTime}ms`,
+              errorType: error.constructor.name 
+            });
             result = { error: error.message };
           }
           
@@ -510,9 +548,12 @@ Begin by gathering any missing details from the user, then plan a personalized i
   // Augment with travel times/distances if they are missing
   await addTravelTimes(geocodedLocations, userLocation);
 
-  debugLog(`Chat completed successfully`, { 
+  debugLog(`🎉 Chat workflow completed successfully`, { 
     finalLocationCount: geocodedLocations.length,
-    enhancedFeaturesUsed: hasEnhanced
+    enhancedFeaturesUsed: hasEnhanced,
+    responseLength: cleanedText?.length || 0,
+    hasLocations: geocodedLocations.length > 0,
+    workflowType: hasEnhanced ? 'ENHANCED_SPATIAL' : 'BASIC_MAPBOX'
   });
 
   return res.status(200).json({ 
@@ -522,7 +563,8 @@ Begin by gathering any missing details from the user, then plan a personalized i
       metadata: {
         ...metadata,
         enhancedPOIUsed: hasEnhanced,
-        debugEnabled: DEBUG_ENABLED
+        debugEnabled: DEBUG_ENABLED,
+        workflowType: hasEnhanced ? 'ENHANCED_SPATIAL' : 'BASIC_MAPBOX'
       }
     }
   });
