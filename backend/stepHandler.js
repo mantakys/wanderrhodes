@@ -165,13 +165,26 @@ export async function getInitialRecommendations({ userLocation, userPreferences 
     // Fallback to default POIs if enhanced system not available or no results
     debugLog(`Using fallback POIs`, { 
       reason: hasEnhanced ? 'no_enhanced_results' : 'no_enhanced_system',
-      fallbackCount: DEFAULT_FALLBACK_POIS.length 
+      fallbackCount: DEFAULT_FALLBACK_POIS.length,
+      excludeNames,
+      excludeIds
     });
 
     // Filter out already selected POIs from fallback
-    const fallbackRecommendations = DEFAULT_FALLBACK_POIS.filter(poi =>
-      !excludeNames.includes(poi.name) && (!poi.place_id || !excludeIds.includes(poi.place_id))
-    );
+    const fallbackRecommendations = DEFAULT_FALLBACK_POIS.filter(poi => {
+      const nameExcluded = excludeNames && excludeNames.includes(poi.name);
+      const idExcluded = excludeIds && (poi.place_id && excludeIds.includes(poi.place_id) || poi.id && excludeIds.includes(poi.id));
+      const shouldExclude = nameExcluded || idExcluded;
+      
+      debugLog(`Fallback POI filtering`, {
+        poiName: poi.name,
+        nameExcluded,
+        idExcluded, 
+        shouldExclude
+      });
+      
+      return !shouldExclude;
+    });
 
     return {
       success: true,
@@ -182,10 +195,14 @@ export async function getInitialRecommendations({ userLocation, userPreferences 
 
   } catch (error) {
     debugLog(`Error getting initial recommendations: ${error.message}`);
-    // Final fallback to default POIs
-    const fallbackRecommendations = DEFAULT_FALLBACK_POIS.filter(poi =>
-      !excludeNames.includes(poi.name) && (!poi.place_id || !excludeIds.includes(poi.place_id))
-    );
+    // Final fallback to default POIs with proper exclusion
+    const fallbackRecommendations = DEFAULT_FALLBACK_POIS.filter(poi => {
+      const nameExcluded = excludeNames && excludeNames.includes(poi.name);
+      const idExcluded = excludeIds && (poi.place_id && excludeIds.includes(poi.place_id) || poi.id && excludeIds.includes(poi.id));
+      const shouldExclude = nameExcluded || idExcluded;
+      
+      return !shouldExclude;
+    });
     return {
       success: true,
       recommendations: fallbackRecommendations.slice(0, 5),
@@ -260,14 +277,30 @@ export async function getNextRecommendations({ userLocation, userPreferences = {
       }
     }
 
-    // Fallback to simpler logic
-    const fallbackRecommendations = DEFAULT_FALLBACK_POIS.filter(poi => 
-      !selectedPOIs.some(selected => selected.name === poi.name)
-    );
+    // Fallback to simpler logic with proper exclusion
+    const fallbackRecommendations = DEFAULT_FALLBACK_POIS.filter(poi => {
+      const nameExcluded = excludeNames && excludeNames.includes(poi.name);
+      const idExcluded = excludeIds && (poi.place_id && excludeIds.includes(poi.place_id) || poi.id && excludeIds.includes(poi.id));
+      const selectedExcluded = selectedPOIs && selectedPOIs.some(selected => selected.name === poi.name);
+      const shouldExclude = nameExcluded || idExcluded || selectedExcluded;
+      
+      debugLog(`Fallback next POI filtering`, {
+        poiName: poi.name,
+        nameExcluded,
+        idExcluded,
+        selectedExcluded,
+        shouldExclude
+      });
+      
+      return !shouldExclude;
+    });
 
     debugLog(`Fallback next recommendations`, { 
       available: fallbackRecommendations.length,
-      reason: hasEnhanced ? 'no_enhanced_results' : 'no_enhanced_system' 
+      reason: hasEnhanced ? 'no_enhanced_results' : 'no_enhanced_system',
+      excludeNames,
+      excludeIds,
+      selectedPOIsCount: selectedPOIs?.length || 0
     });
 
     return {
@@ -280,10 +313,15 @@ export async function getNextRecommendations({ userLocation, userPreferences = {
   } catch (error) {
     debugLog(`Error getting next recommendations: ${error.message}`);
     
-    // Final fallback
-    const fallbackRecommendations = DEFAULT_FALLBACK_POIS.filter(poi => 
-      !selectedPOIs.some(selected => selected.name === poi.name)
-    );
+    // Final fallback with proper exclusion
+    const fallbackRecommendations = DEFAULT_FALLBACK_POIS.filter(poi => {
+      const nameExcluded = excludeNames && excludeNames.includes(poi.name);
+      const idExcluded = excludeIds && (poi.place_id && excludeIds.includes(poi.place_id) || poi.id && excludeIds.includes(poi.id));
+      const selectedExcluded = selectedPOIs && selectedPOIs.some(selected => selected.name === poi.name);
+      const shouldExclude = nameExcluded || idExcluded || selectedExcluded;
+      
+      return !shouldExclude;
+    });
 
     return {
       success: true,

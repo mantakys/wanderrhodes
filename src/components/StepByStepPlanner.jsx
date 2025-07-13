@@ -40,14 +40,15 @@ const StepByStepPlanner = ({
   
   const maxPOIs = userPreferences.numberOfPOIs || 5;
 
-  // Persist state to sessionStorage
+  // Persist state to sessionStorage with preferences hash
   const persistState = (step, pois, completed) => {
     try {
       const stateToSave = {
         currentStep: step,
         selectedPOIs: pois,
         planCompleted: completed,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        userPreferencesHash: JSON.stringify(userPreferences)
       };
       sessionStorage.setItem('wr_step_by_step_progress', JSON.stringify(stateToSave));
     } catch (error) {
@@ -64,20 +65,65 @@ const StepByStepPlanner = ({
     }
   };
 
-  // On mount, clear session if isNewPlan
+  // Detect if we should clear session (new plan, stale session, or user preferences changed)
+  const shouldClearSession = () => {
+    if (isNewPlan) return true;
+    
+    try {
+      const saved = sessionStorage.getItem('wr_step_by_step_progress');
+      if (!saved) return false;
+      
+      const parsed = JSON.parse(saved);
+      const sessionAge = Date.now() - (parsed.timestamp || 0);
+      
+      // Clear if session is older than 2 hours
+      if (sessionAge > 2 * 60 * 60 * 1000) {
+        console.log('Clearing stale step-by-step session (>2 hours old)');
+        return true;
+      }
+      
+      // Clear if user preferences significantly changed
+      const prevPrefString = parsed.userPreferencesHash;
+      const currentPrefString = JSON.stringify(userPreferences);
+      if (prevPrefString && prevPrefString !== currentPrefString) {
+        console.log('Clearing step-by-step session due to changed preferences');
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.warn('Error checking session validity:', error);
+      return true; // Clear on error
+    }
+  };
+
+  // On mount, clear session if needed and initialize
   useEffect(() => {
-    if (isNewPlan) {
+    if (shouldClearSession()) {
+      console.log('Clearing step-by-step session state');
       clearPersistedState();
-    }
-    // If we have persisted selectedPOIs, call onPlanUpdate to sync with parent
-    if (persistedState.selectedPOIs.length > 0) {
-      onPlanUpdate(persistedState.selectedPOIs);
-    }
-    // Get initial recommendations if starting fresh, or next recommendations if resuming
-    if (persistedState.selectedPOIs.length === 0) {
-      getInitialRecommendations([]); // always pass [] for new plan
-    } else if (persistedState.selectedPOIs.length < maxPOIs && !persistedState.planCompleted) {
-      getNextRecommendations();
+      setSelectedPOIs([]);
+      setCurrentStep(1);
+      setPlanCompleted(false);
+      getInitialRecommendations([]);
+    } else {
+      // Resume from persisted state
+      console.log('Resuming step-by-step progress', { 
+        selectedPOIs: persistedState.selectedPOIs.length,
+        currentStep: persistedState.currentStep
+      });
+      
+      // Sync with parent
+      if (persistedState.selectedPOIs.length > 0) {
+        onPlanUpdate(persistedState.selectedPOIs);
+      }
+      
+      // Get recommendations based on current state
+      if (persistedState.selectedPOIs.length === 0) {
+        getInitialRecommendations([]);
+      } else if (persistedState.selectedPOIs.length < maxPOIs && !persistedState.planCompleted) {
+        getNextRecommendations();
+      }
     }
   }, []);
 
@@ -226,7 +272,7 @@ const StepByStepPlanner = ({
           </h2>
           <div className="flex items-center gap-4">
             {/* Resume indicator */}
-            {persistedState.selectedPOIs.length > 0 && (
+            {!isNewPlan && selectedPOIs.length > 0 && (
               <div className="text-xs text-green-400 bg-green-500/20 px-2 py-1 rounded-full">
                 📍 Resumed progress
               </div>
@@ -244,7 +290,7 @@ const StepByStepPlanner = ({
                     setPlanCompleted(false);
                     clearPersistedState();
                     onPlanUpdate([]);
-                    getInitialRecommendations();
+                    getInitialRecommendations([]);
                   }
                 }}
                 className="text-xs text-red-400 hover:text-red-300 underline"

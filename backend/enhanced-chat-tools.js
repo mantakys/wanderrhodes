@@ -210,11 +210,47 @@ export async function getContextualRecommendations({
     debugLog(`Final search criteria`, criteria);
     
     const results = await searchPOIsAdvanced(criteria);
-    debugLog(`Advanced search results`, { resultCount: results?.length || 0 });
+    debugLog(`Advanced search results`, { 
+      resultCount: results?.length || 0,
+      firstResult: results?.[0] ? { name: results[0].name, type: results[0].primary_type } : null,
+      searchCriteria: {
+        hasLocation: !!(criteria.latitude && criteria.longitude),
+        hasTypes: !!(criteria.types && criteria.types.length > 0),
+        radius: criteria.radius,
+        excludeNamesCount: criteria.excludeNames?.length || 0,
+        excludeIdsCount: criteria.excludeIds?.length || 0
+      }
+    });
     
     if (!results || results.length === 0) {
-      debugLog(`No results from advanced search`);
-      return [];
+      debugLog(`No results from advanced search, trying fallback without type restrictions`);
+      
+      // Try again without type restrictions
+      const fallbackCriteria = {
+        ...criteria,
+        types: null, // Remove type restriction
+        radius: Math.min(criteria.radius * 2, 10000) // Expand radius but cap at 10km
+      };
+      
+      debugLog(`Fallback search criteria`, fallbackCriteria);
+      const fallbackResults = await searchPOIsAdvanced(fallbackCriteria);
+      debugLog(`Fallback search results`, { 
+        resultCount: fallbackResults?.length || 0,
+        expandedRadius: fallbackCriteria.radius
+      });
+      
+      if (!fallbackResults || fallbackResults.length === 0) {
+        debugLog(`No results from fallback search either`);
+        return [];
+      }
+      
+      // Use fallback results
+      const enhancedFallbackResults = fallbackResults.map(poi => ({
+        ...poi,
+        contextualTips: generateContextualTips(poi, { timeOfDay, activityType, userPreferences })
+      }));
+      
+      return transformPOIsForResponse(enhancedFallbackResults.slice(0, 5));
     }
     
     // Add contextual insights
