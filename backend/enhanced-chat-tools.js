@@ -11,62 +11,116 @@ import {
   searchPOIsAdvanced,
   isPOIDataAvailable,
   hasPOIFeatures,
-  getPOIStatistics
+  getPOIStatistics,
+  findPOIByNameAndLocation
 } from './db-adapter.js';
+
+// Debug logging configuration
+const DEBUG_ENABLED = process.env.NODE_ENV === 'development' || process.env.ENHANCED_CHAT_DEBUG === 'true';
+const debugLog = (message, data = null) => {
+  if (DEBUG_ENABLED) {
+    const timestamp = new Date().toISOString();
+    console.log(`🔍 [${timestamp}] ENHANCED_CHAT_DEBUG: ${message}`);
+    if (data) {
+      console.log(`🔍 [${timestamp}] DATA:`, JSON.stringify(data, null, 2));
+    }
+  }
+};
 
 // Check if enhanced features are available
 export async function hasEnhancedFeatures() {
-  return hasPOIFeatures() && await isPOIDataAvailable();
+  try {
+    const hasPOI = hasPOIFeatures();
+    const isPOIAvailable = hasPOI ? await isPOIDataAvailable() : false;
+    
+    debugLog(`Enhanced features check`, { 
+      hasPOIFeatures: hasPOI,
+      isPOIDataAvailable: isPOIAvailable,
+      result: hasPOI && isPOIAvailable 
+    });
+    
+    return hasPOI && isPOIAvailable;
+  } catch (error) {
+    debugLog(`Enhanced features check failed: ${error.message}`);
+    return false;
+  }
 }
 
 // Enhanced nearby places search using spatial relationships
 export async function getEnhancedNearbyPlaces({ lat, lng, type = 'restaurant', radius = 1000 }) {
   try {
     if (!await hasEnhancedFeatures()) {
+      debugLog(`Enhanced features not available for getEnhancedNearbyPlaces`);
       throw new Error('Enhanced POI data not available');
     }
     
-    console.log(`🔍 Enhanced search: ${type} near ${lat}, ${lng} (radius: ${radius}m)`);
+    debugLog(`Enhanced nearby places search`, { lat, lng, type, radius });
     
     // Search for POIs of the specified type
     const pois = await searchPOIsByType(type, lat, lng, radius, 10);
+    debugLog(`Initial POI search result`, { resultCount: pois?.length || 0 });
     
-    if (pois.length === 0) {
+    if (!pois || pois.length === 0) {
+      debugLog(`No POIs found for type ${type}, trying broader search`);
+      
       // Fallback to broader search
       const nearbyPois = await getNearbyPOIs(lat, lng, radius * 2, [type], 5);
+      debugLog(`Broader search result`, { resultCount: nearbyPois?.length || 0 });
+      
+      if (!nearbyPois || nearbyPois.length === 0) {
+        debugLog(`No POIs found in broader search either`);
+        return [];
+      }
+      
       return transformPOIsForResponse(nearbyPois);
     }
     
     // Enhance results with spatial context
+    debugLog(`Enhancing ${pois.length} POIs with spatial context`);
     const enhancedPois = await Promise.all(
       pois.map(async (poi) => {
-        // Get spatial relationships for context
-        const adjacent = await getAdjacentPOIs(poi.id, 3);
-        const walkingDistance = await getWalkingDistancePOIs(poi.id, 5);
-        
-        return {
-          ...poi,
-          spatialContext: {
-            adjacent: adjacent.map(rel => ({
-              name: rel.related_poi_name,
-              type: rel.related_poi_type,
-              distance: rel.distance_meters
-            })),
-            walkingDistance: walkingDistance.map(rel => ({
-              name: rel.related_poi_name,
-              type: rel.related_poi_type,
-              distance: rel.distance_meters,
-              walkingTime: rel.travel_time_walking
-            }))
-          }
-        };
+        try {
+          // Get spatial relationships for context
+          const adjacent = await getAdjacentPOIs(poi.id, 3);
+          const walkingDistance = await getWalkingDistancePOIs(poi.id, 5);
+          
+          debugLog(`Spatial context for POI ${poi.id}`, { 
+            adjacentCount: adjacent?.length || 0,
+            walkingDistanceCount: walkingDistance?.length || 0 
+          });
+          
+          return {
+            ...poi,
+            spatialContext: {
+              adjacent: (adjacent || []).map(rel => ({
+                name: rel.related_poi_name,
+                type: rel.related_poi_type,
+                distance: rel.distance_meters
+              })),
+              walkingDistance: (walkingDistance || []).map(rel => ({
+                name: rel.related_poi_name,
+                type: rel.related_poi_type,
+                distance: rel.distance_meters,
+                walkingTime: rel.travel_time_walking
+              }))
+            }
+          };
+        } catch (error) {
+          debugLog(`Error enhancing POI ${poi.id}: ${error.message}`);
+          return poi; // Return original POI if enhancement fails
+        }
       })
     );
     
-    return transformPOIsForResponse(enhancedPois);
+    const transformedResults = transformPOIsForResponse(enhancedPois);
+    debugLog(`Enhanced nearby places search completed`, { 
+      finalResultCount: transformedResults.length 
+    });
+    
+    return transformedResults;
     
   } catch (error) {
-    console.warn('⚠️ Enhanced search failed, using fallback:', error.message);
+    debugLog(`Enhanced nearby places search failed: ${error.message}`);
     throw error; // Let caller handle fallback
   }
 }
@@ -81,10 +135,13 @@ export async function getContextualRecommendations({
 }) {
   try {
     if (!await hasEnhancedFeatures()) {
+      debugLog(`Enhanced features not available for contextual recommendations`);
       return null;
     }
     
-    console.log(`🎯 Contextual search for ${activityType} at ${lat}, ${lng}`);
+    debugLog(`Contextual recommendations search`, { 
+      lat, lng, userPreferences, timeOfDay, activityType 
+    });
     
     // Build search criteria based on context
     const criteria = {
@@ -107,6 +164,7 @@ export async function getContextualRecommendations({
     
     if (activityType && activityTypeMappings[activityType]) {
       criteria.types = activityTypeMappings[activityType];
+      debugLog(`Activity type mapping`, { activityType, mappedTypes: criteria.types });
     }
     
     // Apply user preferences
@@ -117,18 +175,29 @@ export async function getContextualRecommendations({
         'luxury': 3
       };
       criteria.priceLevel = budgetToPriceLevel[userPreferences.budget] || 3;
+      debugLog(`Budget preference applied`, { budget: userPreferences.budget, priceLevel: criteria.priceLevel });
     }
     
     if (userPreferences.minRating) {
       criteria.minRating = userPreferences.minRating;
+      debugLog(`Rating preference applied`, { minRating: criteria.minRating });
     }
     
     // Time-based filtering
     if (timeOfDay === 'evening' || timeOfDay === 'sunset') {
       criteria.tags = ['sunset-view', 'romantic', 'terrace'];
+      debugLog(`Time-based filtering applied`, { timeOfDay, tags: criteria.tags });
     }
     
+    debugLog(`Final search criteria`, criteria);
+    
     const results = await searchPOIsAdvanced(criteria);
+    debugLog(`Advanced search results`, { resultCount: results?.length || 0 });
+    
+    if (!results || results.length === 0) {
+      debugLog(`No results from advanced search`);
+      return [];
+    }
     
     // Add contextual insights
     const enhancedResults = results.map(poi => ({
@@ -136,10 +205,15 @@ export async function getContextualRecommendations({
       contextualTips: generateContextualTips(poi, { timeOfDay, activityType, userPreferences })
     }));
     
-    return transformPOIsForResponse(enhancedResults);
+    const transformedResults = transformPOIsForResponse(enhancedResults);
+    debugLog(`Contextual recommendations completed`, { 
+      finalResultCount: transformedResults.length 
+    });
+    
+    return transformedResults;
     
   } catch (error) {
-    console.error('❌ Contextual recommendations failed:', error);
+    debugLog(`Contextual recommendations failed: ${error.message}`);
     return null;
   }
 }
@@ -148,46 +222,55 @@ export async function getContextualRecommendations({
 export async function getOptimizedRoute(locations, startPoint = null) {
   try {
     if (!await hasEnhancedFeatures() || locations.length < 2) {
-      return locations; // Return as-is if no optimization possible
+      debugLog(`Route optimization not available`, { 
+        hasEnhanced: await hasEnhancedFeatures(),
+        locationCount: locations.length 
+      });
+      return locations; // Return original order
     }
     
-    console.log(`🗺️ Optimizing route for ${locations.length} locations`);
+    debugLog(`Route optimization requested`, { 
+      locationCount: locations.length,
+      hasStartPoint: !!startPoint 
+    });
     
-    // For now, implement a simple nearest-neighbor optimization
-    // In the future, this could use more sophisticated algorithms
-    
-    const optimized = [];
-    let current = startPoint || locations[0];
-    let remaining = [...locations];
-    
+    // Simple distance-based optimization
+    const optimizedLocations = [...locations];
     if (startPoint) {
-      optimized.push(current);
-    } else {
-      remaining.shift();
-      optimized.push(current);
+      optimizedLocations.unshift(startPoint);
     }
     
-    while (remaining.length > 0) {
-      let nearestIndex = 0;
+    // Sort by distance from previous location (greedy approach)
+    for (let i = 1; i < optimizedLocations.length - 1; i++) {
+      const current = optimizedLocations[i];
+      let nearestIndex = i;
       let minDistance = Infinity;
       
-      for (let i = 0; i < remaining.length; i++) {
-        const distance = calculateDistance(current, remaining[i]);
+      for (let j = i + 1; j < optimizedLocations.length; j++) {
+        const distance = calculateDistance(current, optimizedLocations[j]);
         if (distance < minDistance) {
           minDistance = distance;
-          nearestIndex = i;
+          nearestIndex = j;
         }
       }
       
-      current = remaining.splice(nearestIndex, 1)[0];
-      optimized.push(current);
+      if (nearestIndex !== i) {
+        // Swap locations
+        [optimizedLocations[i + 1], optimizedLocations[nearestIndex]] = 
+        [optimizedLocations[nearestIndex], optimizedLocations[i + 1]];
+      }
     }
     
-    return optimized;
+    debugLog(`Route optimization completed`, { 
+      originalOrder: locations.map(l => l.name),
+      optimizedOrder: optimizedLocations.map(l => l.name) 
+    });
+    
+    return optimizedLocations;
     
   } catch (error) {
-    console.error('❌ Route optimization failed:', error);
-    return locations;
+    debugLog(`Route optimization failed: ${error.message}`);
+    return locations; // Return original order on error
   }
 }
 
@@ -195,25 +278,44 @@ export async function getOptimizedRoute(locations, startPoint = null) {
 export async function getAlternativeSuggestions(originalLocationName, lat, lng) {
   try {
     if (!await hasEnhancedFeatures()) {
+      debugLog(`Enhanced features not available for alternative suggestions`);
       return [];
     }
     
+    debugLog(`Alternative suggestions search`, { 
+      originalLocationName, lat, lng 
+    });
+    
     // Find the original POI in our database
     const originalPOI = await findPOIByNameAndLocation(originalLocationName, lat, lng, 500);
+    debugLog(`Original POI lookup result`, { 
+      found: !!originalPOI,
+      poiId: originalPOI?.id 
+    });
     
     if (!originalPOI) {
+      debugLog(`Original POI not found, using nearby search`);
       // If not found, search for similar POIs nearby
-      return await getNearbyPOIs(lat, lng, 2000, null, 5);
+      const nearbyPois = await getNearbyPOIs(lat, lng, 2000, null, 5);
+      debugLog(`Nearby POIs fallback result`, { 
+        resultCount: nearbyPois?.length || 0 
+      });
+      return nearbyPois || [];
     }
     
     // Get spatially related POIs
     const adjacent = await getAdjacentPOIs(originalPOI.id, 5);
     const walking = await getWalkingDistancePOIs(originalPOI.id, 8);
     
+    debugLog(`Spatial relationships found`, { 
+      adjacentCount: adjacent?.length || 0,
+      walkingCount: walking?.length || 0 
+    });
+    
     // Combine and deduplicate
     const alternatives = new Map();
     
-    [...adjacent, ...walking].forEach(rel => {
+    [...(adjacent || []), ...(walking || [])].forEach(rel => {
       if (!alternatives.has(rel.related_poi_id)) {
         alternatives.set(rel.related_poi_id, {
           id: rel.related_poi_id,
@@ -229,19 +331,30 @@ export async function getAlternativeSuggestions(originalLocationName, lat, lng) 
       }
     });
     
-    return Array.from(alternatives.values())
+    const finalAlternatives = Array.from(alternatives.values())
       .sort((a, b) => a.distance_meters - b.distance_meters)
       .slice(0, 5);
     
+    debugLog(`Alternative suggestions completed`, { 
+      finalAlternativeCount: finalAlternatives.length 
+    });
+    
+    return finalAlternatives;
+    
   } catch (error) {
-    console.error('❌ Alternative suggestions failed:', error);
+    debugLog(`Alternative suggestions failed: ${error.message}`);
     return [];
   }
 }
 
 // Transform POI data to match chatHandler expected format
 function transformPOIsForResponse(pois) {
-  return pois.map(poi => ({
+  if (!pois || !Array.isArray(pois)) {
+    debugLog(`Invalid POI data for transformation`, { pois });
+    return [];
+  }
+  
+  const transformed = pois.map(poi => ({
     name: poi.name,
     type: poi.primary_type,
     place_id: poi.place_id,
@@ -266,97 +379,98 @@ function transformPOIsForResponse(pois) {
     ...(poi.spatialContext && { spatialContext: poi.spatialContext }),
     ...(poi.contextualTips && { contextualTips: poi.contextualTips })
   }));
+  
+  debugLog(`POI transformation completed`, { 
+    originalCount: pois.length,
+    transformedCount: transformed.length 
+  });
+  
+  return transformed;
 }
 
 // Generate contextual tips based on POI and context
 function generateContextualTips(poi, context) {
   const tips = [];
   
-  // Time-based tips
-  if (context.timeOfDay === 'sunset' && poi.tags?.includes('sunset-view')) {
-    tips.push('Perfect timing for sunset views!');
-  }
-  
-  if (context.timeOfDay === 'evening' && poi.primary_type === 'restaurant') {
-    tips.push('Great choice for evening dining');
-  }
-  
-  // Activity-based tips
-  if (context.activityType === 'beach' && poi.amenities?.includes('parking')) {
-    tips.push('Convenient parking available');
-  }
-  
-  // Rating-based tips
-  if (poi.rating >= 4.5) {
-    tips.push('Highly rated by visitors');
-  }
-  
-  // Local tips from database
-  if (poi.local_tips && poi.local_tips.length > 0) {
-    tips.push(...poi.local_tips.slice(0, 2));
+  try {
+    // Time-based tips
+    if (context.timeOfDay === 'sunset' && poi.tags?.includes('sunset-view')) {
+      tips.push('Perfect timing for sunset views!');
+    }
+    
+    if (context.timeOfDay === 'evening' && poi.primary_type === 'restaurant') {
+      tips.push('Great choice for evening dining');
+    }
+    
+    // Activity-based tips
+    if (context.activityType === 'beach' && poi.amenities?.includes('parking')) {
+      tips.push('Convenient parking available');
+    }
+    
+    // Rating-based tips
+    if (poi.rating && parseFloat(poi.rating) >= 4.5) {
+      tips.push('Highly rated by visitors');
+    }
+    
+    // Local tips from database
+    if (poi.local_tips && Array.isArray(poi.local_tips) && poi.local_tips.length > 0) {
+      tips.push(...poi.local_tips.slice(0, 2));
+    }
+    
+    debugLog(`Generated contextual tips`, { 
+      poiName: poi.name,
+      context,
+      tipsCount: tips.length 
+    });
+    
+  } catch (error) {
+    debugLog(`Error generating contextual tips: ${error.message}`);
   }
   
   return tips;
 }
 
-// Calculate haversine distance between two points
+// Calculate distance between two points
 function calculateDistance(point1, point2) {
   const lat1 = parseFloat(point1.latitude || point1.lat);
-  const lon1 = parseFloat(point1.longitude || point1.lng);
+  const lng1 = parseFloat(point1.longitude || point1.lng);
   const lat2 = parseFloat(point2.latitude || point2.lat);
-  const lon2 = parseFloat(point2.longitude || point2.lng);
+  const lng2 = parseFloat(point2.longitude || point2.lng);
   
-  const R = 6371000; // Earth's radius in meters
+  const R = 6371; // Earth's radius in km
   const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
   const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon/2) * Math.sin(dLon/2);
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
+  const distance = R * c * 1000; // Convert to meters
+  
+  return distance;
 }
 
-// Export system status for debugging
+// Get system status for debugging
 export async function getSystemStatus() {
   try {
-    const hasFeatures = await hasEnhancedFeatures();
+    const hasEnhanced = await hasEnhancedFeatures();
+    const stats = hasEnhanced ? await getPOIStatistics() : null;
     
-    if (!hasFeatures) {
-      return {
-        status: 'basic',
-        message: 'Using basic features - enhanced POI data not available',
-        features: {
-          spatialRelationships: false,
-          contextualRecommendations: false,
-          routeOptimization: false
-        }
-      };
-    }
-    
-    // Get POI statistics if available
-    let stats = {};
-    try {
-      stats = await getPOIStatistics();
-    } catch (error) {
-      console.warn('⚠️ Could not fetch POI statistics:', error.message);
-    }
-    
-    return {
-      status: 'enhanced',
-      message: 'Enhanced POI features available',
+    const status = {
+      status: hasEnhanced ? 'enhanced' : 'basic',
+      message: hasEnhanced ? 'Enhanced POI features available' : 'Basic features only',
       features: {
-        spatialRelationships: true,
-        contextualRecommendations: true,
-        routeOptimization: true
+        spatialRelationships: hasEnhanced,
+        contextualRecommendations: hasEnhanced,
+        routeOptimization: hasEnhanced
       },
-      data: {
-        totalPOIs: stats.totalPOIs || 0,
-        totalRelationships: stats.totalRelationships || 0,
-        topTypes: stats.topTypes?.slice(0, 5) || []
-      }
+      data: stats || { message: 'No enhanced data available' }
     };
     
+    debugLog(`System status check`, status);
+    return status;
+    
   } catch (error) {
+    debugLog(`System status check failed: ${error.message}`);
     return {
       status: 'error',
       message: error.message,
@@ -364,7 +478,8 @@ export async function getSystemStatus() {
         spatialRelationships: false,
         contextualRecommendations: false,
         routeOptimization: false
-      }
+      },
+      data: { error: error.message }
     };
   }
 } 

@@ -5,5 +5,34 @@ google_api_key.txt
 node_modules
 .DS_Store
 
+# Database files
+*.sqlite
 *.sqlite-shm
 *.sqlite-wal
+database.sqlite
+rhodes_qdrant/
+backend/qdrant/
+
+# Large data files
+rhodes_knowledge_base_*.json
+rhodes_knowledge_base_*.xml
+rhodes_comprehensive_beaches.json
+rhodes_chunks.jsonl
+*.jsonl
+output/
+data/
+
+# Python cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Visualization files
+*.html
+rhodes_data_visualization.html
+
+# Config files with potentially sensitive data
+overnight_scraper_config.json

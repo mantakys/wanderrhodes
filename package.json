@@ -18,7 +18,9 @@
     "verify:database": "node -e \"import('./backend/db-adapter.js').then(m => m.isPOIDataAvailable().then(r => console.log('POI Data Available:', r)))\"",
     "validate:migration": "node scripts/validate_migration_data.js",
     "migrate:production": "node scripts/run_production_migration.js",
-    "verify:production": "curl -s https://www.wanderrhodes.gr/api/verify-enhanced-data | jq . || curl -s https://www.wanderrhodes.gr/api/verify-enhanced-data"
+    "verify:production": "curl -s https://www.wanderrhodes.gr/api/verify-enhanced-data | jq . || curl -s https://www.wanderrhodes.gr/api/verify-enhanced-data",
+    "test:enhanced-chat": "node backend/test-enhanced-chat-integration.js",
+    "debug:enhanced-chat": "ENHANCED_CHAT_DEBUG=true node backend/test-enhanced-chat-integration.js"
   },
   "dependencies": {
     "@langchain/core": "^0.3.61",

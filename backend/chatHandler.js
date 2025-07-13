@@ -1,16 +1,139 @@
-// chatHandler.js
+// chatHandler.js - Enhanced with Spatial POI Intelligence
 import OpenAI from 'openai';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { getNearbyPlaces, getTravelTime } from './tools/mapbox.js';
+import { getNearbyPlaces as mapboxGetNearbyPlaces, getTravelTime } from './tools/mapbox.js';
 import { geocodeLocation, validateCoordinates } from './tools/geocoding.js';
+import { 
+  hasEnhancedFeatures, 
+  getEnhancedNearbyPlaces, 
+  getContextualRecommendations,
+  getAlternativeSuggestions
+} from './enhanced-chat-tools.js';
 import Ajv from 'ajv';
 
 const execFileAsync = promisify(execFile);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ajv = new Ajv();
+
+// Debug logging configuration
+const DEBUG_ENABLED = process.env.NODE_ENV === 'development' || process.env.CHAT_DEBUG === 'true';
+const debugLog = (message, data = null) => {
+  if (DEBUG_ENABLED) {
+    const timestamp = new Date().toISOString();
+    console.log(`🔍 [${timestamp}] CHAT_DEBUG: ${message}`);
+    if (data) {
+      console.log(`🔍 [${timestamp}] DATA:`, JSON.stringify(data, null, 2));
+    }
+  }
+};
+
+// Enhanced getNearbyPlaces with spatial intelligence and fallback
+async function getNearbyPlaces(params) {
+  const { lat, lng, radius = 1000, type = 'restaurant' } = params;
+  
+  debugLog(`getNearbyPlaces called`, { lat, lng, radius, type });
+  
+  try {
+    // Check if enhanced features are available
+    const hasEnhanced = await hasEnhancedFeatures();
+    debugLog(`Enhanced features available: ${hasEnhanced}`);
+    
+    if (hasEnhanced) {
+      debugLog(`Using enhanced spatial POI search`);
+      
+      // Try enhanced search first
+      const enhancedResults = await getEnhancedNearbyPlaces({ lat, lng, type, radius });
+      
+      if (enhancedResults && enhancedResults.length > 0) {
+        debugLog(`Enhanced search successful`, { resultCount: enhancedResults.length });
+        
+        // Transform enhanced results to match expected format
+        const transformedResults = enhancedResults.map(poi => ({
+          name: poi.name,
+          place_id: poi.place_id,
+          latitude: poi.latitude,
+          longitude: poi.longitude,
+          address: poi.address,
+          rating: poi.rating,
+          price_level: poi.price_level,
+          types: poi.type ? [poi.type] : [],
+          opening_hours: poi.opening_hours,
+          phone: poi.phone,
+          website: poi.website,
+          
+          // Enhanced fields
+          amenities: poi.amenities || [],
+          tags: poi.tags || [],
+          description: poi.description,
+          highlights: poi.highlights || [],
+          local_tips: poi.local_tips || [],
+          
+          // Add spatial context if available
+          ...(poi.spatialContext && { spatialContext: poi.spatialContext }),
+          ...(poi.contextualTips && { contextualTips: poi.contextualTips })
+        }));
+        
+        return transformedResults;
+      }
+    }
+    
+    // Fallback to basic Mapbox search
+    debugLog(`Using fallback Mapbox search`);
+    const fallbackResults = await mapboxGetNearbyPlaces({ lat, lng, radius, type });
+    debugLog(`Fallback search result`, { resultCount: fallbackResults?.length || 0 });
+    
+    return fallbackResults;
+    
+  } catch (error) {
+    debugLog(`getNearbyPlaces error: ${error.message}`);
+    
+    // Final fallback to basic Mapbox
+    try {
+      debugLog(`Emergency fallback to basic Mapbox`);
+      return await mapboxGetNearbyPlaces({ lat, lng, radius, type });
+    } catch (fallbackError) {
+      debugLog(`Emergency fallback failed: ${fallbackError.message}`);
+      throw new Error(`Both enhanced and fallback search failed: ${error.message}`);
+    }
+  }
+}
+
+// Enhanced contextual recommendations (new tool)
+async function getContextualRecommendationsTool(params) {
+  const { lat, lng, userPreferences = {}, timeOfDay = null, activityType = null } = params;
+  
+  debugLog(`getContextualRecommendationsTool called`, { lat, lng, userPreferences, timeOfDay, activityType });
+  
+  try {
+    const hasEnhanced = await hasEnhancedFeatures();
+    
+    if (!hasEnhanced) {
+      debugLog(`Enhanced features not available for contextual recommendations`);
+      // Fallback to basic nearby search
+      return await getNearbyPlaces({ lat, lng, type: activityType || 'restaurant' });
+    }
+    
+    const recommendations = await getContextualRecommendations({
+      lat, lng, userPreferences, timeOfDay, activityType
+    });
+    
+    debugLog(`Contextual recommendations result`, { 
+      resultCount: recommendations?.length || 0,
+      hasRecommendations: !!recommendations 
+    });
+    
+    return recommendations || [];
+    
+  } catch (error) {
+    debugLog(`getContextualRecommendationsTool error: ${error.message}`);
+    
+    // Fallback to basic nearby search
+    return await getNearbyPlaces({ lat, lng, type: activityType || 'restaurant' });
+  }
+}
 
 const locationSchema = {
   type: "object",
@@ -56,7 +179,18 @@ export default async function chatHandler(req, res) {
   }
 
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  const { history = [], prompt, userLocation = null } = req.body;
+  const { history = [], prompt, userLocation = null, userPreferences = {} } = req.body;
+
+  debugLog(`Chat request received`, { 
+    hasHistory: history.length > 0,
+    promptLength: prompt?.length || 0,
+    hasUserLocation: !!userLocation,
+    hasUserPreferences: Object.keys(userPreferences).length > 0
+  });
+
+  // Check enhanced features status
+  const hasEnhanced = await hasEnhancedFeatures();
+  debugLog(`Enhanced POI system status: ${hasEnhanced ? 'ACTIVE' : 'INACTIVE'}`);
 
   // 1) Retrieve RAG context (disabled)
   // NOTE: Temporarily disabling the knowledge-base retrieval while we refine the RAG pipeline.
@@ -76,9 +210,28 @@ export default async function chatHandler(req, res) {
   }
   */
 
-  // 2) Build system prompt
+  // 2) Build enhanced system prompt
   const systemPrompt = `
 You are WanderRhodes, a passionate local expert and travel companion for Rhodes Island. Think of yourself as a friendly local friend who knows every hidden gem and secret spot on the island.
+
+${hasEnhanced ? `
+🚀 ENHANCED MODE: You have access to spatial intelligence with 2,930+ POIs and 21,000+ spatial relationships!
+
+**Your Enhanced Capabilities:**
+- Spatial context awareness: Find places "on the way" or "nearby" with actual relationships
+- Cultural intelligence: Distinguish authentic local spots from tourist traps
+- Activity clustering: Recommend areas with multiple related activities
+- Local insights: Access to verified local tips and hidden gems
+- Contextual recommendations: Match suggestions to user preferences and time of day
+
+**Enhanced Tool Usage:**
+- Use "getNearbyPlaces" for spatial-aware POI search with local context
+- Use "getContextualRecommendations" for preference-based suggestions
+- Access to spatial relationships, local tips, and authentic experiences
+
+` : `
+⚠️ BASIC MODE: Enhanced POI system not available, using basic location search.
+`}
 
 Your approach to travel planning should be thoughtful and personalized:
 
@@ -154,27 +307,36 @@ TRAVEL GUIDELINES:
 
 ${userLocation ? `User current coordinates: (${userLocation.lat}, ${userLocation.lng}). Treat this as their starting point unless they specify another origin.` : ""}
 
+${userPreferences && Object.keys(userPreferences).length > 0 ? `
+User Preferences:
+${Object.entries(userPreferences).map(([key, value]) => `- ${key}: ${Array.isArray(value) ? value.join(', ') : value}`).join('\n')}
+
+**IMPORTANT: Tailor ALL recommendations based on these preferences!**
+` : ""}
+
 Context:
 ${context}
 
 Begin by gathering any missing details from the user, then plan a personalized itinerary using the available tools.
 `;
 
-  // 3) Define tools for the assistant
+  // 3) Define enhanced tools for the assistant
   const tools = [
     {
       type: "function",
       function: {
         name: "getNearbyPlaces",
-        description: "Find nearby restaurants by coordinates",
-      parameters: {
+        description: hasEnhanced ? 
+          "Find nearby places using spatial intelligence with local context, relationships, and authentic recommendations" :
+          "Find nearby places by coordinates",
+        parameters: {
           type: "object",
-        properties: {
+          properties: {
             lat: { type: "number" },
             lng: { type: "number" },
-            radius: { type: "integer", default: 500 },
+            radius: { type: "integer", default: 1000 },
             type: { type: "string", default: "restaurant" }
-        },
+          },
           required: ["lat", "lng"]
         }
       }
@@ -184,18 +346,40 @@ Begin by gathering any missing details from the user, then plan a personalized i
       function: {
         name: "getTravelTime",
         description: "Get travel time between two locations",
-      parameters: {
+        parameters: {
           type: "object",
-        properties: {
+          properties: {
             origin: { type: "string" },
             destination: { type: "string" },
             mode: { type: "string", default: "driving" }
-        },
+          },
           required: ["origin", "destination"]
         }
       }
     }
   ];
+
+  // Add contextual recommendations tool if enhanced features are available
+  if (hasEnhanced) {
+    tools.push({
+      type: "function",
+      function: {
+        name: "getContextualRecommendations",
+        description: "Get personalized recommendations based on user preferences, time of day, and activity type with spatial intelligence",
+        parameters: {
+          type: "object",
+          properties: {
+            lat: { type: "number" },
+            lng: { type: "number" },
+            userPreferences: { type: "object", default: {} },
+            timeOfDay: { type: "string", enum: ["morning", "afternoon", "evening", "sunset"] },
+            activityType: { type: "string", enum: ["dining", "sightseeing", "beach", "shopping", "nightlife", "culture", "nature"] }
+          },
+          required: ["lat", "lng"]
+        }
+      }
+    });
+  }
 
   // Helper to ensure every message has a valid string content (OpenAI API rejects null/undefined)
   const sanitizeMessages = (msgs) => msgs.map((m) => {
@@ -216,10 +400,18 @@ Begin by gathering any missing details from the user, then plan a personalized i
     { role: "user", content: prompt }
   ];
 
+  debugLog(`Starting chat loop`, { 
+    systemPromptLength: systemPrompt.length,
+    totalMessages: messages.length,
+    availableTools: tools.length
+  });
+
   const MAX_ITERATIONS = 5;
   for (let i = 0; i < MAX_ITERATIONS; i++) {
+    debugLog(`Chat iteration ${i + 1}/${MAX_ITERATIONS}`);
+    
     const completion = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
+        model: "gpt-4o-mini",
         messages: sanitizeMessages(messages),
         tools: tools,
         tool_choice: "auto",
@@ -229,20 +421,31 @@ Begin by gathering any missing details from the user, then plan a personalized i
     messages.push(responseMessage);
 
     if (responseMessage.tool_calls) {
-      console.log('🛠️ Tool calls requested:', responseMessage.tool_calls);
+      debugLog(`Tool calls requested`, { toolCallCount: responseMessage.tool_calls.length });
       const toolCalls = responseMessage.tool_calls;
       
       const toolResults = await Promise.all(
         toolCalls.map(async (toolCall) => {
           const { name, arguments: args } = toolCall.function;
           const parsedArgs = JSON.parse(args);
-          console.log(`🔧 Executing tool: ${name} with args:`, parsedArgs);
+          debugLog(`Executing tool: ${name}`, parsedArgs);
           
           let result;
-          if (name === "getNearbyPlaces") result = await getNearbyPlaces(parsedArgs);
-          else if (name === "getTravelTime") result = await getTravelTime(parsedArgs);
-          
-          console.log(`✅ Tool ${name} result:`, result);
+          try {
+                         if (name === "getNearbyPlaces") {
+               result = await getNearbyPlaces(parsedArgs);
+             } else if (name === "getTravelTime") {
+               result = await getTravelTime(parsedArgs);
+             } else if (name === "getContextualRecommendations") {
+               result = await getContextualRecommendationsTool(parsedArgs);
+             }
+            
+            debugLog(`Tool ${name} success`, { resultCount: result?.length || 'N/A' });
+            
+          } catch (error) {
+            debugLog(`Tool ${name} error: ${error.message}`);
+            result = { error: error.message };
+          }
           
           return {
             tool_call_id: toolCall.id,
@@ -259,13 +462,19 @@ Begin by gathering any missing details from the user, then plan a personalized i
     const responseText = responseMessage.content || "";
     const { locations } = extractStructuredData(responseText);
 
+    debugLog(`Response received`, { 
+      responseLength: responseText.length,
+      locationsFound: locations.length,
+      hasQuestion: responseText.includes('?')
+    });
+
     // Break only if the assistant has provided location data AND is not asking further questions.
     if (locations.length > 0 && !responseText.includes('?')) {
       break;
     }
 
     // If the assistant is still asking the user something (contains '?'), politely instruct it to proceed.
-    console.log("Assistant seems to be waiting for user input. Re-prompting to continue…");
+    debugLog("Assistant waiting for input, prompting to continue");
     messages.push({
       role: 'user',
       content: 'Please proceed and provide the complete itinerary with all remaining points of interest now, including travel times. You have all the information you need.'
@@ -274,21 +483,25 @@ Begin by gathering any missing details from the user, then plan a personalized i
 
   const finalMessage = messages.filter(m => m.role === 'assistant').pop();
   if (!finalMessage) {
+    debugLog(`No final message found`);
     return res.status(500).json({ error: "Failed to get a response from the assistant." });
   }
 
   let response = finalMessage.content || "";
   if (response.trim() === "") {
+    debugLog(`Empty response, retrying`);
     try {
       const retryCompletion = await openai.chat.completions.create({
-        model: "gpt-4.1-mini",
+        model: "gpt-4o-mini",
         messages: [...messages, { role: 'user', content: 'Please provide the itinerary now.' }],
       });
       response = retryCompletion.choices[0].message.content || "";
-    } catch {}
+    } catch (retryError) {
+      debugLog(`Retry failed: ${retryError.message}`);
+    }
   }
 
-  console.log("Raw AI Response before parsing:\n---\n", response, "\n---");
+  debugLog(`Processing final response`, { responseLength: response.length });
   const { locations, cleanedText, metadata } = extractStructuredData(response);
   
   // Geocode any locations with missing or invalid coordinates
@@ -297,9 +510,21 @@ Begin by gathering any missing details from the user, then plan a personalized i
   // Augment with travel times/distances if they are missing
   await addTravelTimes(geocodedLocations, userLocation);
 
+  debugLog(`Chat completed successfully`, { 
+    finalLocationCount: geocodedLocations.length,
+    enhancedFeaturesUsed: hasEnhanced
+  });
+
   return res.status(200).json({ 
     reply: cleanedText,
-    structuredData: { locations: geocodedLocations, metadata }
+    structuredData: { 
+      locations: geocodedLocations, 
+      metadata: {
+        ...metadata,
+        enhancedPOIUsed: hasEnhanced,
+        debugEnabled: DEBUG_ENABLED
+      }
+    }
   });
 }
 
