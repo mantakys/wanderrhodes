@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import chatHandler from './chatHandler.js';
 import agentHandler from './agentHandler.js';
+import stepHandler from './stepHandler.js';
 import Stripe from 'stripe';
 import mapboxDirectionsProxy from './tools/mapboxDirectionsProxy.js';
 import axios from 'axios';
@@ -83,6 +84,7 @@ const USE_LANGCHAIN_AGENT = process.env.USE_LANGCHAIN_AGENT === 'true' || false;
 
 app.post('/api/chat', optionalAuth, chatGuard, USE_LANGCHAIN_AGENT ? agentHandler : chatHandler);
 app.post('/api/agent', optionalAuth, chatGuard, agentHandler); // Direct access to agent
+app.post('/api/poi-step', optionalAuth, chatGuard, stepHandler); // Step-by-step POI recommendations
 
 app.post('/api/request-login', async (req, res) => {
   const { email } = req.body;

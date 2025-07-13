@@ -6,6 +6,7 @@ import LocationCard from "../components/LocationCard";
 import AgentStatusIndicator from "../components/ui/AgentStatusIndicator";
 import TravelPreferences from "../components/ui/TravelPreferences";
 import PlanEditor from "../components/ui/PlanEditor";
+import StepByStepPlanner from "../components/StepByStepPlanner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Copy, BookMarked, ArrowLeft, Send, Sparkles, Thermometer, SunMedium, MapPin, Settings, Edit } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
@@ -236,6 +237,10 @@ export default function ChatPage() {
   const [showPlanEditor, setShowPlanEditor] = useState(false);
   const [editablePlan, setEditablePlan] = useState([]);
   const [lastResponse, setLastResponse] = useState(null);
+  
+  // Step-by-step planner state
+  const [stepByStepMode, setStepByStepMode] = useState(false);
+  const [stepByStepPlan, setStepByStepPlan] = useState([]);
   
   // Server error handling state
   const [serverErrorCount, setServerErrorCount] = useState(0);
@@ -505,12 +510,23 @@ export default function ChatPage() {
       handlePreferencesUpdate(preferences);
       setShowPreferences(false);
       
+      // For new plans with preferences, automatically enter step-by-step mode
+      if (isNewPlan && user?.has_paid && preferences.numberOfPOIs) {
+        setStepByStepMode(true);
+        toast({
+          title: "Let's build your perfect day! 🚀",
+          description: "Now you can choose each place you want to visit, step by step.",
+          duration: 4000,
+        });
+        return;
+      }
+      
       // Create preference summary and continue conversation
       const prefSummary = `I've updated my preferences: 
         Budget: ${preferences.budget}, 
         Interests: ${preferences.interests?.join(', ')}, 
         Time preferences: ${preferences.timeOfDay?.join(', ')}, 
-        Group: ${preferences.groupSize}. 
+        Group: ${preferences.groupSize}${preferences.numberOfPOIs ? `, Places to visit: ${preferences.numberOfPOIs}` : ''}. 
         Please update my travel plan based on these preferences.`;
       
       handleSend(prefSummary, true);
@@ -566,6 +582,66 @@ export default function ChatPage() {
       title: "Plan Updated",
       description: "Your travel plan has been successfully updated.",
     });
+  };
+
+  // Step-by-step planner handlers
+  const handleStepByStepToggle = () => {
+    setStepByStepMode(!stepByStepMode);
+    if (!stepByStepMode) {
+      // Reset step-by-step plan when entering mode
+      setStepByStepPlan([]);
+    }
+  };
+
+  const handleStepByStepPlanUpdate = (updatedPlan) => {
+    setStepByStepPlan(updatedPlan);
+    
+    // Update current plan for compatibility with existing system
+    const planObj = {
+      title: `Step-by-Step Plan (${updatedPlan.length} places)`,
+      locations: updatedPlan,
+      timestamp: Date.now(),
+      stepByStep: true
+    };
+    setCurrentPlan(planObj);
+    try { 
+      sessionStorage.setItem('wr_current_plan', JSON.stringify(planObj)); 
+    } catch {}
+  };
+
+  const handleStepByStepComplete = (finalPlan) => {
+    setStepByStepPlan(finalPlan);
+    
+    // Create plan object
+    const planObj = {
+      title: `My Rhodes Adventure (${finalPlan.length} places)`,
+      locations: finalPlan,
+      timestamp: Date.now(),
+      stepByStep: true
+    };
+    setCurrentPlan(planObj);
+    try { 
+      sessionStorage.setItem('wr_current_plan', JSON.stringify(planObj)); 
+    } catch {}
+    setPlanSaved(false);
+    
+    // Show success toast
+    toast({
+      title: "Your Perfect Day is Ready! 🎉",
+      description: `Created a travel plan with ${finalPlan.length} amazing places to visit.`,
+      duration: 5000,
+    });
+
+    // Show save reminder for paid users
+    if (user?.has_paid) {
+      setTimeout(() => {
+        toast({
+          title: "Don't forget to save! 💾",
+          description: "Save your plan so you can access it anytime during your trip.",
+          duration: 6000,
+        });
+      }, 2000);
+    }
   };
 
   // Configuration for using the agentic framework
@@ -857,6 +933,22 @@ export default function ChatPage() {
 
         {/* right buttons */}
         <div className="flex gap-2 items-center">
+          {/* Step-by-step mode toggle */}
+          {user?.has_paid && (
+            <button
+              onClick={handleStepByStepToggle}
+              disabled={isTyping}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition border ${
+                stepByStepMode
+                  ? 'bg-yellow-500/20 border-yellow-400 text-yellow-300'
+                  : 'bg-white/10 border-white/20 text-white/70 hover:border-white/40 hover:text-white'
+              } ${isTyping ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              title={stepByStepMode ? "Switch to chat mode" : "Switch to step-by-step mode"}
+            >
+              {stepByStepMode ? '💬 Chat' : '🎯 Step-by-Step'}
+            </button>
+          )}
+          
           <button
             onClick={() => {
               if (isTyping) {
@@ -881,11 +973,21 @@ export default function ChatPage() {
         </div>
       </header>
 
-      {/* CHAT */}
-      <div
-        className="flex-1 overflow-y-auto p-4 space-y-4 pb-32"
-        style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}
-      >
+      {/* CHAT OR STEP-BY-STEP PLANNER */}
+      {stepByStepMode ? (
+        <div className="flex-1 overflow-y-auto">
+          <StepByStepPlanner
+            userPreferences={userPreferences}
+            userLocation={userLocation}
+            onPlanComplete={handleStepByStepComplete}
+            onPlanUpdate={handleStepByStepPlanUpdate}
+          />
+        </div>
+      ) : (
+        <div
+          className="flex-1 overflow-y-auto p-4 space-y-4 pb-32"
+          style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}
+        >
         <AnimatePresence>
         {messages.map((m, i) => {
           if (m.type === 'location') {
@@ -941,9 +1043,11 @@ export default function ChatPage() {
         </AnimatePresence>
         {isTyping && <AiLoadingAnimation />}
         <div ref={chatEndRef} />
-      </div>
+        </div>
+      )}
 
-      {/* BOTTOM: suggestions + free-pill + input */}
+      {/* BOTTOM: suggestions + free-pill + input - only show in chat mode */}
+      {!stepByStepMode && (
       <motion.footer
         initial={{ y: 100 }}
         animate={{ y: 0 }}
@@ -1049,6 +1153,7 @@ export default function ChatPage() {
           )}
         </form>
       </motion.footer>
+      )}
 
       {/* Toast notifications */}
       <Toaster />

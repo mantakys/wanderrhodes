@@ -13,6 +13,7 @@ const TravelPreferences = ({ onPreferencesUpdate, initialPreferences = {}, onCom
     mobility: initialPreferences.mobility || 'active',
     dining: initialPreferences.dining || 'mixed',
     duration: initialPreferences.duration || 'half-day',
+    numberOfPOIs: initialPreferences.numberOfPOIs || 5,
     ...initialPreferences
   });
 
@@ -66,6 +67,15 @@ const TravelPreferences = ({ onPreferencesUpdate, initialPreferences = {}, onCom
     { value: 'family', label: 'Family', icon: '👨‍👩‍👧‍👦' },
     { value: 'friends', label: 'Friends', icon: '👫' },
     { value: 'group', label: 'Large Group', icon: '👥👥' }
+  ];
+
+  const poiCountOptions = [
+    { value: 3, label: '3 Places', desc: 'Quick trip', icon: '🎯' },
+    { value: 4, label: '4 Places', desc: 'Half day', icon: '⏰' },
+    { value: 5, label: '5 Places', desc: 'Full day', icon: '🌟' },
+    { value: 6, label: '6 Places', desc: 'Extended', icon: '🗺️' },
+    { value: 7, label: '7 Places', desc: 'Detailed', icon: '📍' },
+    { value: 8, label: '8 Places', desc: 'Complete', icon: '🌍' }
   ];
 
   return (
@@ -184,6 +194,31 @@ const TravelPreferences = ({ onPreferencesUpdate, initialPreferences = {}, onCom
               >
                 <div className="text-lg mb-1">{option.icon}</div>
                 <div className="text-xs">{option.label}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Number of POIs */}
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 text-white font-medium">
+            <MapPin size={18} />
+            How many places to visit?
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            {poiCountOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => updatePreference('numberOfPOIs', option.value)}
+                className={`p-3 rounded-lg border transition-all text-center min-h-[75px] ${
+                  preferences.numberOfPOIs === option.value
+                    ? 'border-yellow-400 bg-yellow-500/20 text-yellow-300'
+                    : 'border-white/20 hover:border-white/40 text-white/70 hover:text-white'
+                }`}
+              >
+                <div className="text-lg mb-1">{option.icon}</div>
+                <div className="text-xs font-medium">{option.label}</div>
+                <div className="text-xs opacity-70">{option.desc}</div>
               </button>
             ))}
           </div>
