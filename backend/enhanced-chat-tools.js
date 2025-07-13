@@ -140,7 +140,9 @@ export async function getContextualRecommendations({
   lng, 
   userPreferences = {}, 
   timeOfDay = null,
-  activityType = null 
+  activityType = null,
+  excludeNames = null,
+  excludeIds = null
 }) {
   try {
     if (!await hasEnhancedFeatures()) {
@@ -149,7 +151,7 @@ export async function getContextualRecommendations({
     }
     
     debugLog(`Contextual recommendations search`, { 
-      lat, lng, userPreferences, timeOfDay, activityType 
+      lat, lng, userPreferences, timeOfDay, activityType, excludeNames, excludeIds 
     });
     
     // Build search criteria based on context
@@ -196,6 +198,13 @@ export async function getContextualRecommendations({
     if (timeOfDay === 'evening' || timeOfDay === 'sunset') {
       criteria.tags = ['sunset-view', 'romantic', 'terrace'];
       debugLog(`Time-based filtering applied`, { timeOfDay, tags: criteria.tags });
+    }
+
+    if (excludeNames && excludeNames.length > 0) {
+      criteria.excludeNames = excludeNames;
+    }
+    if (excludeIds && excludeIds.length > 0) {
+      criteria.excludeIds = excludeIds;
     }
     
     debugLog(`Final search criteria`, criteria);

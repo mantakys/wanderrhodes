@@ -209,7 +209,22 @@ export async function getPOIClustersNear(latitude, longitude, radius = 2000) {
   return result.rows;
 }
 
-// Get POIs by multiple criteria (enhanced search)
+/**
+ * Get POIs by multiple criteria (enhanced search)
+ * @param {Object} criteria
+ * @param {string[]=} criteria.types
+ * @param {number=} criteria.latitude
+ * @param {number=} criteria.longitude
+ * @param {number=} criteria.radius
+ * @param {number=} criteria.minRating
+ * @param {number=} criteria.priceLevel
+ * @param {string[]=} criteria.amenities
+ * @param {string[]=} criteria.tags
+ * @param {string=} criteria.searchText
+ * @param {number=} criteria.limit
+ * @param {string[]=} criteria.excludeIds - Array of POI ids to exclude
+ * @param {string[]=} criteria.excludeNames - Array of POI names to exclude
+ */
 export async function searchPOIsAdvanced(criteria) {
   const {
     types = null,
@@ -221,7 +236,9 @@ export async function searchPOIsAdvanced(criteria) {
     amenities = null,
     tags = null,
     searchText = null,
-    limit = 20
+    limit = 20,
+    excludeIds = null,
+    excludeNames = null
   } = criteria;
   
   let query = `
@@ -291,6 +308,18 @@ export async function searchPOIsAdvanced(criteria) {
   if (searchText) {
     query += ` AND (name ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`;
     params.push(`%${searchText}%`);
+    paramIndex++;
+  }
+
+  if (excludeIds && excludeIds.length > 0) {
+    query += ` AND id <> ALL($${paramIndex})`;
+    params.push(excludeIds);
+    paramIndex++;
+  }
+
+  if (excludeNames && excludeNames.length > 0) {
+    query += ` AND name <> ALL($${paramIndex})`;
+    params.push(excludeNames);
     paramIndex++;
   }
   

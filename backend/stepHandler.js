@@ -198,6 +198,10 @@ export async function getNextRecommendations({ userLocation, userPreferences = {
   const lastPOI = selectedPOIs[selectedPOIs.length - 1];
   const searchLocation = lastPOI?.location?.coordinates || userLocation || RHODES_CENTER;
 
+  // Gather exclude lists
+  const excludeNames = selectedPOIs.map(poi => poi.name);
+  const excludeIds = selectedPOIs.map(poi => poi.place_id || poi.id).filter(Boolean);
+
   try {
     const hasEnhanced = await hasEnhancedFeatures();
     
@@ -210,7 +214,10 @@ export async function getNextRecommendations({ userLocation, userPreferences = {
         searchLocation,
         activityType,
         timeOfDay,
-        currentStep 
+        currentStep,
+        excludeNames,
+        excludeIds,
+        selectedPOIs
       });
 
       const recommendations = await getContextualRecommendations({
@@ -218,28 +225,25 @@ export async function getNextRecommendations({ userLocation, userPreferences = {
         lng: searchLocation.lng,
         userPreferences,
         timeOfDay,
-        activityType
+        activityType,
+        excludeNames,
+        excludeIds,
+        selectedPOIs // for future agent reasoning
       });
 
       if (recommendations && recommendations.length > 0) {
-        // Filter out already selected POIs
-        const filteredRecommendations = recommendations.filter(poi => 
-          !selectedPOIs.some(selected => selected.name === poi.name)
-        );
-
         debugLog(`Enhanced next recommendations`, { 
           totalFound: recommendations.length,
-          afterFiltering: filteredRecommendations.length,
           activityType,
           timeOfDay 
         });
 
         return {
           success: true,
-          recommendations: filteredRecommendations.slice(0, 5),
+          recommendations: recommendations.slice(0, 5),
           source: 'enhanced_contextual',
           location: searchLocation,
-          context: { activityType, timeOfDay, currentStep }
+          context: { activityType, timeOfDay, currentStep, selectedPOIs }
         };
       }
     }
