@@ -90,7 +90,8 @@ const StepByStepPlanner = ({
         body: JSON.stringify({
           step: 'GET_INITIAL_RECOMMENDATIONS',
           userLocation,
-          userPreferences
+          userPreferences,
+          selectedPOIs // always send, even if empty
         })
       });
 
