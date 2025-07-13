@@ -341,7 +341,32 @@ export async function searchPOIsAdvanced(criteria) {
   query += ` LIMIT $${paramIndex}`;
   params.push(limit);
   
+  // Debug logging for SQL query
+  const debugPrefix = process.env.NODE_ENV === 'production' ? '🚀 PROD_DB_POI' : '🔍 DEV_DB_POI';
+  const timestamp = new Date().toISOString();
+  console.log(`${debugPrefix} [${timestamp}] Executing searchPOIsAdvanced`);
+  console.log(`${debugPrefix} [${timestamp}] Query:`, query.replace(/\s+/g, ' ').trim());
+  console.log(`${debugPrefix} [${timestamp}] Parameters:`, JSON.stringify(params, null, 0));
+  console.log(`${debugPrefix} [${timestamp}] Criteria:`, JSON.stringify({
+    types, latitude, longitude, radius, minRating, priceLevel, 
+    excludeTypes, excludeNames: excludeNames?.length || 0, 
+    excludeIds: excludeIds?.length || 0, limit
+  }, null, 0));
+
   const result = await executeQuery(query, params);
+  
+  console.log(`${debugPrefix} [${timestamp}] Query result: ${result.rows.length} rows`);
+  if (result.rows.length > 0) {
+    console.log(`${debugPrefix} [${timestamp}] Sample results:`, result.rows.slice(0, 3).map(row => ({
+      name: row.name,
+      type: row.primary_type,
+      rating: row.rating,
+      distance: row.distance_meters,
+      latitude: row.latitude,
+      longitude: row.longitude
+    })));
+  }
+  
   return result.rows;
 }
 

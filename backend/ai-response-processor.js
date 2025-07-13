@@ -48,21 +48,58 @@ export async function processAIToolCalls(openaiResponse, excludeNames = [], excl
       
       const toolFunction = aiDatabaseTools.find(t => t.name === toolCall.function.name);
       if (!toolFunction) {
-        debugLog(`Unknown tool function: ${toolCall.function.name}`);
+        debugLog(`Unknown tool function: ${toolCall.function.name}`, {
+          availableTools: aiDatabaseTools.map(t => t.name),
+          requestedTool: toolCall.function.name
+        });
         continue;
       }
 
-      const params = JSON.parse(toolCall.function.arguments);
-      debugLog(`Tool parameters`, { toolName: toolCall.function.name, params });
+      // Parse and validate parameters
+      let params;
+      try {
+        params = JSON.parse(toolCall.function.arguments);
+        debugLog(`Tool parameters parsed`, { 
+          toolName: toolCall.function.name, 
+          rawArgs: toolCall.function.arguments,
+          parsedParams: params 
+        });
+      } catch (parseError) {
+        debugLog(`Tool parameter parsing failed`, {
+          toolName: toolCall.function.name,
+          rawArgs: toolCall.function.arguments,
+          parseError: parseError.message
+        });
+        continue;
+      }
+
+      // Validate required parameters
+      debugLog(`Validating tool parameters`, {
+        toolName: toolCall.function.name,
+        hasUserInterests: !!(params.user_interests),
+        hasBudget: !!(params.budget),
+        hasLocation: !!(params.latitude && params.longitude),
+        hasSelectedPOIs: !!(params.selected_pois),
+        excludeNamesCount: params.exclude_poi_names?.length || 0
+      });
 
       const result = await toolFunction.function(params);
-      debugLog(`Tool execution result`, { 
+      debugLog(`Tool execution completed`, { 
         toolName: toolCall.function.name,
         resultCount: result?.results?.length || 0,
-        searchSuccess: result?.searchSuccess
+        searchSuccess: result?.searchSuccess,
+        searchRadius: result?.searchRadius,
+        searchType: result?.searchType,
+        hasError: !!result?.error
       });
 
       if (result?.results && Array.isArray(result.results)) {
+        debugLog(`Adding candidates from tool`, {
+          toolName: toolCall.function.name,
+          candidatesAdded: result.results.length,
+          sampleCandidates: result.results.slice(0, 2).map(r => ({ name: r.name, type: r.primary_type || r.type }))
+        });
+        
         allCandidates.push(...result.results);
         
         // Collect search metadata
@@ -72,12 +109,21 @@ export async function processAIToolCalls(openaiResponse, excludeNames = [], excl
           searchMetadata.searchSuccess = result.searchSuccess;
           searchMetadata.searchType = result.searchType;
         }
+      } else {
+        debugLog(`Tool returned no valid results`, {
+          toolName: toolCall.function.name,
+          resultStructure: typeof result,
+          hasResults: !!(result?.results),
+          isArray: Array.isArray(result?.results),
+          resultKeys: result ? Object.keys(result) : []
+        });
       }
 
     } catch (error) {
       debugLog(`Tool execution failed: ${error.message}`, {
         toolName: toolCall.function.name,
-        error: error.stack
+        errorType: error.constructor.name,
+        errorStack: error.stack
       });
     }
   }

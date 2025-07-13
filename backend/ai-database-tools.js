@@ -417,27 +417,44 @@ export const aiDatabaseTools = [
       debugLog('AI Tool: get_must_see_rhodes_attractions called', params);
       
       try {
-        const results = await searchPOIsAdvanced({
+        // Start with no rating requirement for broader results
+        const searchCriteria = {
           types: ['attraction', 'historical_site', 'museum', 'landmark', 'archaeological_site'],
           latitude: 36.4341, // Rhodes center
           longitude: 28.2176,
           radius: 25000, // Cover whole island
-          minRating: 4.0, // High-rated attractions only
+          minRating: null, // REMOVED: No rating filter to get more results
           priceLevel: mapBudgetToPriceLevel(params.budget),
           excludeNames: params.exclude_poi_names || [],
           excludeTypes: EXCLUDED_POI_TYPES, // CRITICAL: Exclude hotels
           limit: 15
+        };
+        
+        debugLog('Must-see attractions search criteria', searchCriteria);
+        
+        const results = await searchPOIsAdvanced(searchCriteria);
+        
+        debugLog('Must-see attractions raw database results', {
+          resultCount: results?.length || 0,
+          firstFew: results?.slice(0, 3)?.map(p => ({ 
+            name: p.name, 
+            type: p.primary_type, 
+            rating: p.rating,
+            hasDescription: !!p.description
+          })) || []
         });
+
+        // Now we should have good results since no rating filter
 
         return {
           results: results || [],
           searchRadius: 25000,
           searchAttempts: 1,
-          searchSuccess: true,
+          searchSuccess: (results?.length || 0) > 0,
           searchType: 'must_see_attractions'
         };
       } catch (error) {
-        debugLog(`Must-see attractions search failed: ${error.message}`);
+        debugLog(`Must-see attractions search failed: ${error.message}`, { error: error.stack });
         return {
           results: [],
           searchRadius: 25000,

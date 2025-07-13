@@ -190,6 +190,23 @@ User Context:
       toolCallCount: response.choices?.[0]?.message?.tool_calls?.length || 0
     });
 
+    // Log complete AI response for debugging
+    debugLog('Full AI Response Content', {
+      content: response.choices?.[0]?.message?.content || 'No content',
+      role: response.choices?.[0]?.message?.role,
+      toolCalls: response.choices?.[0]?.message?.tool_calls || [],
+      finishReason: response.choices?.[0]?.finish_reason,
+      usage: response.usage
+    });
+
+    // Log system and user messages for context
+    debugLog('AI Request Context', {
+      systemPromptLength: systemPrompt.length,
+      userMessageLength: response.choices?.[0]?.message?.content?.length || 0,
+      modelUsed: "gpt-4",
+      toolsAvailable: aiDatabaseTools.map(t => t.name)
+    });
+
     // Process AI tool calls and return recommendations
     return await processAIToolCalls(response, excludeNames, []);
 
@@ -219,25 +236,25 @@ async function getAISequentialRecommendations({ selectedPOIs, userLocation, user
 
 CRITICAL RULES:
 - NEVER recommend hotels, accommodations, or lodging
-- Analyze the complete travel pattern to suggest logical next experiences
-- Use spatial relationships and contextual reasoning
+- Always use database tools to find real POIs from our knowledge base
 - Ensure variety while maintaining travel flow coherence
 
-SEQUENTIAL REASONING STRATEGY:
-1. Analyze ALL previously selected POIs to understand user preferences
-2. Use get_contextual_next_pois to find spatially related options from last POI
-3. Consider travel variety, timing, and logical progression
-4. Recommend POIs that complement the existing journey
-
-CONTEXT ANALYSIS:
+CURRENT SITUATION ANALYSIS:
 - Current step: ${currentStep}
+- Selected POIs so far: ${selectedPOIs.length}
 - Travel pattern: ${travelPattern.style} (${travelPattern.pace})
-- Journey so far: ${selectedPOIs.map(p => `${p.name} (${p.type})`).join(' → ')}
-- Last location: ${lastPOI?.name} at ${lastPOI?.latitude}, ${lastPOI?.longitude}
+${selectedPOIs.length > 0 ? `- Journey so far: ${selectedPOIs.map(p => `${p.name} (${p.type})`).join(' → ')}` : '- This is step 2 but user hasn\'t selected anything yet from step 1'}
+${lastPOI ? `- Last location: ${lastPOI.name} at ${lastPOI.latitude}, ${lastPOI.longitude}` : '- No previous location available'}
 - User preferences: ${JSON.stringify(userPreferences)}
-- Exclude: ${excludeNames.join(', ')}
+- Exclude: ${excludeNames.join(', ') || 'None'}
 
-GOAL: Find 5 POIs that create perfect logical flow from the established travel pattern.`;
+TOOL SELECTION STRATEGY:
+${selectedPOIs.length > 0 && lastPOI ? 
+  `- Use get_contextual_next_pois to find spatially related options from last POI (${lastPOI.name})` :
+  `- No previous POI selected, use search_pois_by_location_and_preferences OR get_must_see_rhodes_attractions`
+}
+
+GOAL: Find 5 diverse POIs that create perfect flow for step ${currentStep} of the travel journey.`;
 
   try {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -248,12 +265,20 @@ GOAL: Find 5 POIs that create perfect logical flow from the established travel p
         { role: "system", content: systemPrompt },
         { 
           role: "user", 
-          content: `Plan step ${currentStep} recommendations based on the established travel journey.
+          content: `Plan step ${currentStep} recommendations.
           
-          Journey analysis:
-          ${selectedPOIs.map((poi, i) => `${i+1}. ${poi.name} (${poi.type}) - ${poi.description || 'No description'}`).join('\n')}
+          ${selectedPOIs.length > 0 ? 
+            `JOURNEY ANALYSIS:
+${selectedPOIs.map((poi, i) => `${i+1}. ${poi.name} (${poi.type}) - ${poi.description || 'No description'}`).join('\n')}
+
+What should come next to create optimal travel flow from ${lastPOI?.name}? Use get_contextual_next_pois to find spatially related POIs.` :
+            
+            `SCENARIO: User is on step ${currentStep} but hasn't selected a POI from previous recommendations yet.
+
+This means they want different options. Use get_must_see_rhodes_attractions or search_pois_by_location_and_preferences to find alternative POIs that match their interests: ${userPreferences.interests?.join(', ') || 'general sightseeing'}.`
+          }
           
-          What should come next to create optimal travel flow and variety? Use database tools to find contextually appropriate POIs.`
+          Use database tools to find real, verified POIs from our knowledge base.`
         }
       ],
       tools: aiDatabaseTools.map(tool => ({
@@ -270,6 +295,24 @@ GOAL: Find 5 POIs that create perfect logical flow from the established travel p
     debugLog('Sequential AI response received', { 
       hasToolCalls: !!(response.choices?.[0]?.message?.tool_calls),
       toolCallCount: response.choices?.[0]?.message?.tool_calls?.length || 0
+    });
+
+    // Log complete AI response for debugging
+    debugLog('Full Sequential AI Response', {
+      content: response.choices?.[0]?.message?.content || 'No content',
+      role: response.choices?.[0]?.message?.role,
+      toolCalls: response.choices?.[0]?.message?.tool_calls || [],
+      finishReason: response.choices?.[0]?.finish_reason,
+      usage: response.usage
+    });
+
+    // Log sequential context for debugging
+    debugLog('Sequential AI Context', {
+      systemPromptLength: systemPrompt.length,
+      selectedPOIsAnalyzed: selectedPOIs.map(p => ({ name: p.name, type: p.type })),
+      currentStep,
+      travelPattern,
+      modelUsed: "gpt-4"
     });
 
     // Process AI tool calls and return recommendations
