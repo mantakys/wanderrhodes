@@ -7,7 +7,8 @@ const StepByStepPlanner = ({
   userPreferences = {}, 
   userLocation = null, 
   onPlanComplete = () => {},
-  onPlanUpdate = () => {}
+  onPlanUpdate = () => {},
+  isNewPlan = false // <-- add this prop
 }) => {
   // Load persisted state on component mount
   const loadPersistedState = () => {
@@ -63,26 +64,27 @@ const StepByStepPlanner = ({
     }
   };
 
-  // Get initial recommendations on mount
+  // On mount, clear session if isNewPlan
   useEffect(() => {
+    if (isNewPlan) {
+      clearPersistedState();
+    }
     // If we have persisted selectedPOIs, call onPlanUpdate to sync with parent
     if (persistedState.selectedPOIs.length > 0) {
       onPlanUpdate(persistedState.selectedPOIs);
     }
-    
     // Get initial recommendations if starting fresh, or next recommendations if resuming
     if (persistedState.selectedPOIs.length === 0) {
-      getInitialRecommendations();
+      getInitialRecommendations([]); // always pass [] for new plan
     } else if (persistedState.selectedPOIs.length < maxPOIs && !persistedState.planCompleted) {
-      // Resume with next recommendations
       getNextRecommendations();
     }
   }, []);
 
-  const getInitialRecommendations = async () => {
+  // Update getInitialRecommendations to accept selectedPOIs
+  const getInitialRecommendations = async (selectedPOIs = []) => {
     setIsLoading(true);
     setError(null);
-    
     try {
       const response = await fetch('/api/poi-step', {
         method: 'POST',
@@ -91,12 +93,10 @@ const StepByStepPlanner = ({
           step: 'GET_INITIAL_RECOMMENDATIONS',
           userLocation,
           userPreferences,
-          selectedPOIs // always send, even if empty
+          selectedPOIs // always pass selectedPOIs
         })
       });
-
       const data = await response.json();
-      
       if (data.success) {
         setRecommendations(data.recommendations);
       } else {

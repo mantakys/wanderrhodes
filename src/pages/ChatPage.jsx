@@ -942,6 +942,7 @@ export default function ChatPage() {
             userLocation={userLocation}
             onPlanComplete={handleStepByStepComplete}
             onPlanUpdate={handleStepByStepPlanUpdate}
+            isNewPlan={isNewPlan} // pass isNewPlan prop
           />
         </div>
       ) : (
