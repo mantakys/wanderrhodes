@@ -170,8 +170,10 @@ User Context:
           }
           
           User preferences: ${JSON.stringify(userPreferences)}
+          ${excludeNames.length > 0 ? `EXCLUDE these POIs (already suggested): ${excludeNames.join(', ')}` : ''}
           
-          Use the database tools to find real, verified POIs from our knowledge base. Select 5 diverse options.`
+          Use the database tools to find real, verified POIs from our knowledge base. Select 5 diverse options.
+          ${excludeNames.length > 0 ? `IMPORTANT: Pass exclude_poi_names parameter with: ${JSON.stringify(excludeNames)}` : ''}`
         }
       ],
       tools: aiDatabaseTools.map(tool => ({
@@ -271,14 +273,17 @@ GOAL: Find 5 diverse POIs that create perfect flow for step ${currentStep} of th
             `JOURNEY ANALYSIS:
 ${selectedPOIs.map((poi, i) => `${i+1}. ${poi.name} (${poi.type}) - ${poi.description || 'No description'}`).join('\n')}
 
-What should come next to create optimal travel flow from ${lastPOI?.name}? Use get_contextual_next_pois to find spatially related POIs.` :
+What should come next to create optimal travel flow from ${lastPOI?.name}? Use get_contextual_next_pois to find spatially related POIs.
+EXCLUDE these POIs (already selected): ${excludeNames.join(', ')}` :
             
             `SCENARIO: User is on step ${currentStep} but hasn't selected a POI from previous recommendations yet.
 
-This means they want different options. Use get_must_see_rhodes_attractions or search_pois_by_location_and_preferences to find alternative POIs that match their interests: ${userPreferences.interests?.join(', ') || 'general sightseeing'}.`
+This means they want different options. Use get_must_see_rhodes_attractions or search_pois_by_location_and_preferences to find alternative POIs that match their interests: ${userPreferences.interests?.join(', ') || 'general sightseeing'}.
+${excludeNames.length > 0 ? `EXCLUDE these POIs (already suggested): ${excludeNames.join(', ')}` : ''}`
           }
           
-          Use database tools to find real, verified POIs from our knowledge base.`
+          Use database tools to find real, verified POIs from our knowledge base.
+          ${excludeNames.length > 0 ? `IMPORTANT: Always pass exclude_poi_names parameter with: ${JSON.stringify(excludeNames)}` : ''}`
         }
       ],
       tools: aiDatabaseTools.map(tool => ({

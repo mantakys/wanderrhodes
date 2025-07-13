@@ -417,14 +417,14 @@ export const aiDatabaseTools = [
       debugLog('AI Tool: get_must_see_rhodes_attractions called', params);
       
       try {
-        // Start with no rating requirement for broader results
+        // Expand search criteria for better results
         const searchCriteria = {
-          types: ['attraction', 'historical_site', 'museum', 'landmark', 'archaeological_site'],
+          types: ['attraction', 'historical_site', 'museum', 'landmark', 'archaeological_site', 'beach', 'restaurant', 'cafe', 'park'],
           latitude: 36.4341, // Rhodes center
           longitude: 28.2176,
           radius: 25000, // Cover whole island
-          minRating: null, // REMOVED: No rating filter to get more results
-          priceLevel: mapBudgetToPriceLevel(params.budget),
+          minRating: null, // No rating filter to get more results
+          priceLevel: null, // Remove price level restriction for initial search
           excludeNames: params.exclude_poi_names || [],
           excludeTypes: EXCLUDED_POI_TYPES, // CRITICAL: Exclude hotels
           limit: 15
@@ -444,7 +444,33 @@ export const aiDatabaseTools = [
           })) || []
         });
 
-        // Now we should have good results since no rating filter
+        // If we got very few results, try a broader search
+        if (!results || results.length < 3) {
+          debugLog('Few results found, trying broader search without type restrictions');
+          const broaderCriteria = {
+            latitude: 36.4341,
+            longitude: 28.2176,
+            radius: 25000,
+            minRating: 3.0, // Add minimum rating for quality
+            excludeNames: params.exclude_poi_names || [],
+            excludeTypes: EXCLUDED_POI_TYPES,
+            limit: 15
+          };
+          
+          const broaderResults = await searchPOIsAdvanced(broaderCriteria);
+          
+          debugLog('Broader search results', { count: broaderResults?.length || 0 });
+          
+          if (broaderResults && broaderResults.length > (results?.length || 0)) {
+            return {
+              results: broaderResults,
+              searchRadius: 25000,
+              searchAttempts: 2,
+              searchSuccess: true,
+              searchType: 'must_see_attractions_broad'
+            };
+          }
+        }
 
         return {
           results: results || [],

@@ -159,13 +159,19 @@ async function processAndFilterPOIs(candidates, excludeNames = [], excludeIds = 
     return [];
   }
 
-  // Step 1: Basic filtering
+  // Step 1: Basic filtering with enhanced logging
   let filtered = candidates.filter(poi => {
-    if (!poi || !poi.name) return false;
+    if (!poi || !poi.name) {
+      debugLog(`Filtered out invalid POI: ${JSON.stringify(poi)}`);
+      return false;
+    }
     
-    // Exclude by name
-    if (excludeNames.includes(poi.name)) {
-      debugLog(`Excluded by name: ${poi.name}`);
+    // Exclude by name (case-insensitive)
+    const excludeByName = excludeNames.some(excludeName => 
+      excludeName.toLowerCase() === poi.name.toLowerCase()
+    );
+    if (excludeByName) {
+      debugLog(`Excluded by name: ${poi.name} (matches exclude list)`);
       return false;
     }
     
@@ -177,7 +183,7 @@ async function processAndFilterPOIs(candidates, excludeNames = [], excludeIds = 
     }
     
     // Exclude hotels and accommodations
-    const poiType = poi.primary_type || poi.type;
+    const poiType = (poi.primary_type || poi.type || '').toLowerCase();
     if (EXCLUDED_POI_TYPES.includes(poiType)) {
       debugLog(`Excluded hotel/accommodation: ${poi.name} (${poiType})`);
       return false;
