@@ -855,27 +855,25 @@ export default function ChatPage() {
             try {
               localStorage.setItem('wr_plan_config', JSON.stringify(cfg));
             } catch {}
-            // Compose a single-line instruction for the assistant
-            const prefsPairs = Object.entries(cfg).filter(([_, v]) => {
-              if (Array.isArray(v)) return v.length > 0;
-              return v != null && v !== '';
-            });
-            let intro = isNewPlan && user?.has_paid
-              ? 'I want to create a new travel plan for Rhodes with these preferences: '
-              : 'Here are my preferences: ';
-            intro += prefsPairs
-                .map(([k, v]) =>
-                  `${k}: ${Array.isArray(v) ? v.join(', ') : v}`,
-                )
-                .join(', ') +
-              '.';
-            if (cfg.extraDetails && cfg.extraDetails.trim()) {
-              intro += ` Additional details: ${cfg.extraDetails.trim()}.`;
-            }
-            intro += isNewPlan && user?.has_paid 
-              ? ' Please create a detailed day plan that I can save for my trip.'
-              : ' Please tailor the plan accordingly.';
-            handleSend(intro, true); // send silently
+            
+            // Convert plan config to user preferences format
+            const preferences = {
+              budget: 'moderate',
+              interests: cfg.waterActivities === 'yes' ? ['beaches'] : [],
+              timeOfDay: cfg.startTime ? [cfg.startTime] : [],
+              groupSize: cfg.companions || 'solo',
+              pace: cfg.pace || 'moderate',
+              mobility: 'active',
+              dining: 'mixed',
+              duration: 'half-day',
+              numberOfPOIs: cfg.numberOfPOIs || 5,
+              transport: cfg.transport || 'car',
+              extraDetails: cfg.extraDetails || ''
+            };
+            
+            // Set preferences and show step-by-step mode
+            handlePreferencesUpdate(preferences);
+            handlePreferencesComplete(preferences);
           }}
         />
         <Toaster />
@@ -1369,6 +1367,7 @@ function PlanConfigurator({ onSubmit }) {
   const [transport, setTransport] = useState(null);
   const [startTime, setStartTime] = useState(null);
   const [companions, setCompanions] = useState(null);
+  const [numberOfPOIs, setNumberOfPOIs] = useState(5);
   const [extraDetails, setExtraDetails] = useState("");
 
   const isReady = Boolean(pace || waterActivities !== null || transport || startTime || companions);
@@ -1469,6 +1468,29 @@ function PlanConfigurator({ onSubmit }) {
         </div>
       </div>
 
+      {/* Number of POIs */}
+      <div className="space-y-2 text-left">
+        <h3 className="text-base font-semibold bg-gradient-to-r from-amber-400 to-yellow-500 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">📍 Places to Visit</h3>
+        <div className="flex flex-wrap gap-2 justify-center">
+          {[
+            { label: '🎯 3 places', value: 3 },
+            { label: '⏰ 4 places', value: 4 },
+            { label: '🌟 5 places', value: 5 },
+            { label: '🗺️ 6 places', value: 6 },
+            { label: '📍 7 places', value: 7 },
+            { label: '🌍 8 places', value: 8 },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              className={`${pillBase} ${numberOfPOIs === opt.value ? selectedPill : unselectedPill}`}
+              onClick={() => setNumberOfPOIs(opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Additional Details */}
       <div className="space-y-2 text-left">
         <h3 className="text-sm font-semibold bg-gradient-to-r from-fuchsia-400 to-pink-500 bg-clip-text text-transparent uppercase tracking-wide">
@@ -1486,7 +1508,7 @@ function PlanConfigurator({ onSubmit }) {
       <motion.button
         whileHover={isReady ? { scale: 1.03 } : {}}
         disabled={!isReady}
-        onClick={() => onSubmit({ pace, waterActivities, transport, startTime, companions, extraDetails })}
+        onClick={() => onSubmit({ pace, waterActivities, transport, startTime, companions, numberOfPOIs, extraDetails })}
         className={`w-full py-3 rounded-full text-sm font-bold uppercase tracking-wide transition-colors ${
           isReady
             ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-[#242b50] shadow-lg'
