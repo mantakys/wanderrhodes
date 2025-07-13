@@ -1383,7 +1383,7 @@ function PlanConfigurator({ onSubmit }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="w-full max-w-md md:max-w-lg mx-auto backdrop-blur-lg bg-white/5 border border-white/10 rounded-2xl p-3 md:p-6 space-y-4 md:space-y-6 shadow-2xl overflow-y-auto max-h-[90vh] min-h-[60vh]"
+      className="w-full sm:max-w-md md:max-w-lg mx-auto backdrop-blur-lg bg-white/5 border border-white/10 rounded-none sm:rounded-2xl p-2 sm:p-3 md:p-6 space-y-3 sm:space-y-4 md:space-y-6 shadow-2xl overflow-y-auto max-h-[100dvh] min-h-[60vh]"
       style={{ minWidth: 0 }}
     >
       {/* Pace */}

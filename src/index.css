@@ -151,3 +151,12 @@ html {
     box-shadow: 0 0 10px hsl(var(--wr-sunset-start)), 0 0 20px hsl(var(--wr-sunset-start)), 0 0 30px hsl(var(--wr-sunset-start)), 0 0 40px hsl(var(--wr-sunset-start));
   }
 }
+
+/* Hide scrollbar utility */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
