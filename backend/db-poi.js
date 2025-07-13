@@ -224,6 +224,7 @@ export async function getPOIClustersNear(latitude, longitude, radius = 2000) {
  * @param {number=} criteria.limit
  * @param {string[]=} criteria.excludeIds - Array of POI ids to exclude
  * @param {string[]=} criteria.excludeNames - Array of POI names to exclude
+ * @param {string[]=} criteria.excludeTypes - Array of POI types to exclude (e.g., hotels)
  */
 export async function searchPOIsAdvanced(criteria) {
   const {
@@ -238,7 +239,8 @@ export async function searchPOIsAdvanced(criteria) {
     searchText = null,
     limit = 20,
     excludeIds = null,
-    excludeNames = null
+    excludeNames = null,
+    excludeTypes = null // NEW: Array of POI types to exclude (e.g., hotels)
   } = criteria;
   
   let query = `
@@ -320,6 +322,12 @@ export async function searchPOIsAdvanced(criteria) {
   if (excludeNames && excludeNames.length > 0) {
     query += ` AND name <> ALL($${paramIndex})`;
     params.push(excludeNames);
+    paramIndex++;
+  }
+
+  if (excludeTypes && excludeTypes.length > 0) {
+    query += ` AND primary_type <> ALL($${paramIndex})`;
+    params.push(excludeTypes);
     paramIndex++;
   }
   

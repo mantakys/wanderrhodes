@@ -1,10 +1,12 @@
 /**
- * Step-by-Step Travel Planning Handler
- * Provides focused, single-purpose POI recommendations
+ * Step-by-Step Travel Planning Handler with AI Knowledge Base Integration
+ * Provides intelligent POI recommendations using curated Rhodes dataset
  */
 
 import { OpenAI } from 'openai';
 import { hasEnhancedFeatures, getContextualRecommendations, getEnhancedNearbyPlaces } from './enhanced-chat-tools.js';
+import { aiDatabaseTools } from './ai-database-tools.js';
+import { processAIToolCalls, generatePOIReasoning } from './ai-response-processor.js';
 
 // Rhodes center coordinates (fallback location)
 const RHODES_CENTER = {
@@ -116,137 +118,355 @@ const DEFAULT_FALLBACK_POIS = [
 ];
 
 /**
- * Get initial POI recommendations based on user location
+ * AI-powered initial POI recommendations
+ * Uses OpenAI with database tools to find optimal starting POIs
  */
-export async function getInitialRecommendations({ userLocation, userPreferences = {}, selectedPOIs = [] }) {
-  debugLog(`Getting initial recommendations`, { 
-    hasLocation: !!userLocation,
-    userLocation: userLocation || 'none',
-    preferencesCount: Object.keys(userPreferences).length 
+async function getAIInitialRecommendations({ userLocation, userPreferences, selectedPOIs }) {
+  const hasLocation = userLocation?.lat && userLocation?.lng;
+  const excludeNames = selectedPOIs.map(poi => poi.name);
+  
+  debugLog('AI Initial Recommendations', {
+    hasLocation,
+    userPreferences,
+    excludeNamesCount: excludeNames.length
   });
 
-  // Determine search location
-  const searchLocation = userLocation || RHODES_CENTER;
-  // Gather exclude lists
-  const excludeNames = selectedPOIs.map(poi => poi.name);
-  const excludeIds = selectedPOIs.map(poi => poi.place_id || poi.id).filter(Boolean);
-  
+  const systemPrompt = `You are a Rhodes travel expert with access to a PostgreSQL database containing 2,651 verified POIs and spatial relationships.
+
+CRITICAL RULES:
+- NEVER recommend hotels, accommodations, or lodging
+- Focus ONLY on attractions, restaurants, beaches, museums, activities
+- Use database tools to query real POI data, never generate fake locations
+
+INITIAL RECOMMENDATION STRATEGY:
+${hasLocation 
+  ? '- User has provided location: Use search_pois_by_location_and_preferences to find nearby POIs matching their interests'
+  : '- No user location: Use get_must_see_rhodes_attractions for top island highlights'
+}
+
+GOAL: Find 5 diverse, high-quality POIs that create an excellent starting point for Rhodes exploration.
+
+User Context:
+- Location: ${hasLocation ? `${userLocation.lat}, ${userLocation.lng}` : 'Not provided'}
+- Interests: ${userPreferences.interests?.join(', ') || 'Not specified'}
+- Budget: ${userPreferences.budget || 'Not specified'}
+- Transport: ${userPreferences.transport || 'Not specified'}
+- Exclude: ${excludeNames.join(', ') || 'None'}`;
+
   try {
-    // Check if enhanced features are available
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { 
+          role: "user", 
+          content: `Find perfect initial POI recommendations for Rhodes travel.
+          
+          ${hasLocation ? 
+            `User is located at: ${userLocation.lat}, ${userLocation.lng}. Find nearby POIs matching their preferences.` :
+            'No location provided. Recommend must-see Rhodes attractions that would appeal to any visitor.'
+          }
+          
+          User preferences: ${JSON.stringify(userPreferences)}
+          
+          Use the database tools to find real, verified POIs from our knowledge base. Select 5 diverse options.`
+        }
+      ],
+      tools: aiDatabaseTools.map(tool => ({
+        type: "function",
+        function: {
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.parameters
+        }
+      })),
+      tool_choice: "auto"
+    });
+
+    debugLog('OpenAI API response received', { 
+      hasToolCalls: !!(response.choices?.[0]?.message?.tool_calls),
+      toolCallCount: response.choices?.[0]?.message?.tool_calls?.length || 0
+    });
+
+    // Process AI tool calls and return recommendations
+    return await processAIToolCalls(response, excludeNames, []);
+
+  } catch (error) {
+    debugLog(`AI initial recommendations failed: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * AI-powered sequential POI recommendations
+ * Analyzes travel pattern and suggests contextual next steps
+ */
+async function getAISequentialRecommendations({ selectedPOIs, userLocation, userPreferences, currentStep, excludeNames }) {
+  const lastPOI = selectedPOIs[selectedPOIs.length - 1];
+  const travelPattern = analyzeTravelPattern(selectedPOIs);
+  
+  debugLog('AI Sequential Recommendations', {
+    currentStep,
+    selectedPOIsCount: selectedPOIs.length,
+    lastPOI: lastPOI?.name,
+    travelPattern,
+    excludeNamesCount: excludeNames.length
+  });
+
+  const systemPrompt = `You are a Rhodes travel expert analyzing a user's travel journey to recommend the perfect next destinations.
+
+CRITICAL RULES:
+- NEVER recommend hotels, accommodations, or lodging
+- Analyze the complete travel pattern to suggest logical next experiences
+- Use spatial relationships and contextual reasoning
+- Ensure variety while maintaining travel flow coherence
+
+SEQUENTIAL REASONING STRATEGY:
+1. Analyze ALL previously selected POIs to understand user preferences
+2. Use get_contextual_next_pois to find spatially related options from last POI
+3. Consider travel variety, timing, and logical progression
+4. Recommend POIs that complement the existing journey
+
+CONTEXT ANALYSIS:
+- Current step: ${currentStep}
+- Travel pattern: ${travelPattern.style} (${travelPattern.pace})
+- Journey so far: ${selectedPOIs.map(p => `${p.name} (${p.type})`).join(' → ')}
+- Last location: ${lastPOI?.name} at ${lastPOI?.latitude}, ${lastPOI?.longitude}
+- User preferences: ${JSON.stringify(userPreferences)}
+- Exclude: ${excludeNames.join(', ')}
+
+GOAL: Find 5 POIs that create perfect logical flow from the established travel pattern.`;
+
+  try {
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    
+    const response = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { 
+          role: "user", 
+          content: `Plan step ${currentStep} recommendations based on the established travel journey.
+          
+          Journey analysis:
+          ${selectedPOIs.map((poi, i) => `${i+1}. ${poi.name} (${poi.type}) - ${poi.description || 'No description'}`).join('\n')}
+          
+          What should come next to create optimal travel flow and variety? Use database tools to find contextually appropriate POIs.`
+        }
+      ],
+      tools: aiDatabaseTools.map(tool => ({
+        type: "function",
+        function: {
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.parameters
+        }
+      })),
+      tool_choice: "auto"
+    });
+
+    debugLog('Sequential AI response received', { 
+      hasToolCalls: !!(response.choices?.[0]?.message?.tool_calls),
+      toolCallCount: response.choices?.[0]?.message?.tool_calls?.length || 0
+    });
+
+    // Process AI tool calls and return recommendations
+    const recommendations = await processAIToolCalls(response, excludeNames, []);
+    
+    // Add AI reasoning to each recommendation
+    return recommendations.map(poi => ({
+      ...poi,
+      aiReasoning: generatePOIReasoning(poi, { stepNumber: currentStep, selectedPOIs, userPreferences })
+    }));
+
+  } catch (error) {
+    debugLog(`AI sequential recommendations failed: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Analyze travel pattern from selected POIs
+ */
+function analyzeTravelPattern(selectedPOIs) {
+  if (selectedPOIs.length === 0) return { style: 'starting', pace: 'unknown' };
+  
+  const types = selectedPOIs.map(p => p.type);
+  const hasBeach = types.includes('beach');
+  const hasCulture = types.includes('museum') || types.includes('historical_site') || types.includes('attraction');
+  const hasDining = types.includes('restaurant') || types.includes('cafe') || types.includes('taverna');
+  
+  let style = 'mixed';
+  if (hasBeach && hasCulture) style = 'cultural_relaxation';
+  else if (hasBeach) style = 'beach_focused';
+  else if (hasCulture) style = 'cultural_exploration';
+  else if (hasDining) style = 'culinary_focused';
+  
+  const pace = selectedPOIs.length > 2 ? 'active' : 'leisurely';
+  
+  return { style, pace };
+}
+
+/**
+ * Get initial POI recommendations with AI reasoning
+ */
+export async function getInitialRecommendations({ userLocation, userPreferences = {}, selectedPOIs = [] }) {
+  debugLog(`Getting AI-powered initial recommendations`, { 
+    hasLocation: !!userLocation,
+    userLocation: userLocation || 'none',
+    preferencesCount: Object.keys(userPreferences).length,
+    selectedPOIsCount: selectedPOIs.length
+  });
+
+  try {
+    // Check if enhanced features (PostgreSQL) are available
     const hasEnhanced = await hasEnhancedFeatures();
-    debugLog(`Enhanced features status: ${hasEnhanced ? 'ACTIVE' : 'INACTIVE'}`);
+    
+    if (hasEnhanced) {
+      debugLog(`Attempting AI knowledge base recommendations`);
+      const aiResult = await getAIInitialRecommendations({
+        userLocation,
+        userPreferences,
+        selectedPOIs
+      });
+      
+      if (aiResult && aiResult.length > 0) {
+        debugLog(`AI recommendations successful`, {
+          count: aiResult.length,
+          source: 'ai_database_tools'
+        });
+        
+        return {
+          success: true,
+          recommendations: aiResult,
+          source: 'ai_knowledge_base',
+          location: userLocation || RHODES_CENTER
+        };
+      }
+    }
+  } catch (aiError) {
+    debugLog(`AI recommendations failed, falling back to enhanced system: ${aiError.message}`);
+  }
+
+  // Fallback to enhanced POI system
+  try {
+    const searchLocation = userLocation || RHODES_CENTER;
+    const excludeNames = selectedPOIs.map(poi => poi.name);
+    const excludeIds = selectedPOIs.map(poi => poi.place_id || poi.id).filter(Boolean);
+    
+    const hasEnhanced = await hasEnhancedFeatures();
+    debugLog(`Enhanced features fallback status: ${hasEnhanced ? 'ACTIVE' : 'INACTIVE'}`);
 
     if (hasEnhanced) {
-      // Use enhanced POI system with spatial intelligence
       const recommendations = await getContextualRecommendations({
         lat: searchLocation.lat,
         lng: searchLocation.lng,
         userPreferences,
-        timeOfDay: 'morning', // Default to morning for initial recommendations
-        activityType: 'sightseeing', // Default to sightseeing for first step
+        timeOfDay: 'morning',
+        activityType: 'sightseeing',
         excludeNames,
         excludeIds
       });
 
       if (recommendations && recommendations.length > 0) {
-        debugLog(`Enhanced recommendations found`, { 
-          count: recommendations.length,
-          location: `${searchLocation.lat}, ${searchLocation.lng}` 
-        });
+        debugLog(`Enhanced fallback successful`, { count: recommendations.length });
         return {
           success: true,
           recommendations: recommendations.slice(0, 5),
-          source: 'enhanced_spatial',
+          source: 'enhanced_spatial_fallback',
           location: searchLocation
         };
       }
     }
 
-    // Fallback to default POIs if enhanced system not available or no results
-    debugLog(`Using fallback POIs`, { 
-      reason: hasEnhanced ? 'no_enhanced_results' : 'no_enhanced_system',
-      fallbackCount: DEFAULT_FALLBACK_POIS.length,
-      excludeNames,
-      excludeIds
-    });
-
-    // Filter out already selected POIs from fallback
+    // Final fallback to default POIs
+    debugLog(`Using default POI fallback`);
     const fallbackRecommendations = DEFAULT_FALLBACK_POIS.filter(poi => {
       const nameExcluded = excludeNames && excludeNames.includes(poi.name);
       const idExcluded = excludeIds && (poi.place_id && excludeIds.includes(poi.place_id) || poi.id && excludeIds.includes(poi.id));
-      const shouldExclude = nameExcluded || idExcluded;
-      
-      debugLog(`Fallback POI filtering`, {
-        poiName: poi.name,
-        nameExcluded,
-        idExcluded, 
-        shouldExclude
-      });
-      
-      return !shouldExclude;
+      return !nameExcluded && !idExcluded;
     });
 
     return {
       success: true,
       recommendations: fallbackRecommendations.slice(0, 5),
-      source: 'fallback_default',
+      source: 'default_fallback',
       location: searchLocation
     };
 
   } catch (error) {
-    debugLog(`Error getting initial recommendations: ${error.message}`);
-    // Final fallback to default POIs with proper exclusion
-    const fallbackRecommendations = DEFAULT_FALLBACK_POIS.filter(poi => {
-      const nameExcluded = excludeNames && excludeNames.includes(poi.name);
-      const idExcluded = excludeIds && (poi.place_id && excludeIds.includes(poi.place_id) || poi.id && excludeIds.includes(poi.id));
-      const shouldExclude = nameExcluded || idExcluded;
-      
-      return !shouldExclude;
-    });
-    return {
-      success: true,
-      recommendations: fallbackRecommendations.slice(0, 5),
-      source: 'fallback_error',
-      location: searchLocation,
-      error: error.message
-    };
+    debugLog(`All recommendation methods failed: ${error.message}`);
+    throw error;
   }
 }
 
 /**
- * Get next POI recommendations based on selected POIs
+ * Get next POI recommendations with AI reasoning and full travel plan context
  */
 export async function getNextRecommendations({ userLocation, userPreferences = {}, selectedPOIs = [], currentStep = 1 }) {
-  debugLog(`Getting next recommendations`, { 
+  debugLog(`Getting AI-powered next recommendations`, { 
     currentStep,
     selectedPOICount: selectedPOIs.length,
-    hasLocation: !!userLocation
+    hasLocation: !!userLocation,
+    selectedPOINames: selectedPOIs.map(p => p.name)
   });
 
-  // Determine search location (last selected POI or user location or center)
-  const lastPOI = selectedPOIs[selectedPOIs.length - 1];
-  const searchLocation = lastPOI?.location?.coordinates || userLocation || RHODES_CENTER;
-
-  // Gather exclude lists
-  const excludeNames = selectedPOIs.map(poi => poi.name);
-  const excludeIds = selectedPOIs.map(poi => poi.place_id || poi.id).filter(Boolean);
-
   try {
+    // Check if enhanced features (PostgreSQL) are available
     const hasEnhanced = await hasEnhancedFeatures();
     
     if (hasEnhanced) {
-      // Determine activity type based on step and preferences
+      debugLog(`Attempting AI sequential recommendations for step ${currentStep}`);
+      const excludeNames = selectedPOIs.map(poi => poi.name);
+      
+      const aiResult = await getAISequentialRecommendations({
+        selectedPOIs,
+        userLocation,
+        userPreferences,
+        currentStep,
+        excludeNames
+      });
+      
+      if (aiResult && aiResult.length > 0) {
+        debugLog(`AI sequential recommendations successful`, {
+          count: aiResult.length,
+          source: 'ai_sequential_reasoning'
+        });
+        
+        // Determine search location for response
+        const lastPOI = selectedPOIs[selectedPOIs.length - 1];
+        const searchLocation = lastPOI?.location?.coordinates || userLocation || RHODES_CENTER;
+        
+        return {
+          success: true,
+          recommendations: aiResult,
+          source: 'ai_sequential_reasoning',
+          location: searchLocation,
+          context: { currentStep, selectedPOIs: selectedPOIs.length }
+        };
+      }
+    }
+  } catch (aiError) {
+    debugLog(`AI sequential recommendations failed, falling back to enhanced system: ${aiError.message}`);
+  }
+
+  // Fallback to enhanced POI system
+  try {
+    const lastPOI = selectedPOIs[selectedPOIs.length - 1];
+    const searchLocation = lastPOI?.location?.coordinates || userLocation || RHODES_CENTER;
+    const excludeNames = selectedPOIs.map(poi => poi.name);
+    const excludeIds = selectedPOIs.map(poi => poi.place_id || poi.id).filter(Boolean);
+    
+    const hasEnhanced = await hasEnhancedFeatures();
+    
+    if (hasEnhanced) {
       const activityType = determineActivityType(currentStep, userPreferences, selectedPOIs);
       const timeOfDay = determineTimeOfDay(currentStep);
 
-      debugLog(`Enhanced search parameters`, { 
-        searchLocation,
-        activityType,
-        timeOfDay,
-        currentStep,
-        excludeNames,
-        excludeIds,
-        selectedPOIs
+      debugLog(`Enhanced fallback search parameters`, { 
+        searchLocation, activityType, timeOfDay, currentStep
       });
 
       const recommendations = await getContextualRecommendations({
@@ -257,79 +477,43 @@ export async function getNextRecommendations({ userLocation, userPreferences = {
         activityType,
         excludeNames,
         excludeIds,
-        selectedPOIs // for future agent reasoning
+        selectedPOIs
       });
 
       if (recommendations && recommendations.length > 0) {
-        debugLog(`Enhanced next recommendations`, { 
-          totalFound: recommendations.length,
-          activityType,
-          timeOfDay 
+        debugLog(`Enhanced fallback successful`, { 
+          totalFound: recommendations.length, activityType, timeOfDay 
         });
 
         return {
           success: true,
           recommendations: recommendations.slice(0, 5),
-          source: 'enhanced_contextual',
+          source: 'enhanced_contextual_fallback',
           location: searchLocation,
           context: { activityType, timeOfDay, currentStep, selectedPOIs }
         };
       }
     }
 
-    // Fallback to simpler logic with proper exclusion
+    // Final fallback to default POIs
+    debugLog(`Using default POI fallback for next recommendations`);
     const fallbackRecommendations = DEFAULT_FALLBACK_POIS.filter(poi => {
       const nameExcluded = excludeNames && excludeNames.includes(poi.name);
       const idExcluded = excludeIds && (poi.place_id && excludeIds.includes(poi.place_id) || poi.id && excludeIds.includes(poi.id));
       const selectedExcluded = selectedPOIs && selectedPOIs.some(selected => selected.name === poi.name);
-      const shouldExclude = nameExcluded || idExcluded || selectedExcluded;
-      
-      debugLog(`Fallback next POI filtering`, {
-        poiName: poi.name,
-        nameExcluded,
-        idExcluded,
-        selectedExcluded,
-        shouldExclude
-      });
-      
-      return !shouldExclude;
-    });
-
-    debugLog(`Fallback next recommendations`, { 
-      available: fallbackRecommendations.length,
-      reason: hasEnhanced ? 'no_enhanced_results' : 'no_enhanced_system',
-      excludeNames,
-      excludeIds,
-      selectedPOIsCount: selectedPOIs?.length || 0
+      return !nameExcluded && !idExcluded && !selectedExcluded;
     });
 
     return {
       success: true,
       recommendations: fallbackRecommendations.slice(0, 5),
-      source: 'fallback_filtered',
+      source: 'default_filtered_fallback',
       location: searchLocation
     };
 
   } catch (error) {
-    debugLog(`Error getting next recommendations: ${error.message}`);
-    
-    // Final fallback with proper exclusion
-    const fallbackRecommendations = DEFAULT_FALLBACK_POIS.filter(poi => {
-      const nameExcluded = excludeNames && excludeNames.includes(poi.name);
-      const idExcluded = excludeIds && (poi.place_id && excludeIds.includes(poi.place_id) || poi.id && excludeIds.includes(poi.id));
-      const selectedExcluded = selectedPOIs && selectedPOIs.some(selected => selected.name === poi.name);
-      const shouldExclude = nameExcluded || idExcluded || selectedExcluded;
-      
-      return !shouldExclude;
-    });
-
-    return {
-      success: true,
-      recommendations: fallbackRecommendations.slice(0, 5),
-      source: 'fallback_error',
-      location: searchLocation,
-      error: error.message
-    };
+    debugLog(`All next recommendation methods failed: ${error.message}`);
+    throw error;
   }
 }
 
