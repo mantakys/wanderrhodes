@@ -1373,7 +1373,7 @@ function PlanConfigurator({ onSubmit }) {
   const isReady = Boolean(pace || waterActivities !== null || transport || startTime || companions);
 
   const pillBase =
-    "px-4 py-2 rounded-full border border-white/20 text-xs md:text-sm font-semibold transition-colors";
+    "px-3 py-2 rounded-full border border-white/20 text-xs md:text-sm font-semibold transition-colors whitespace-nowrap";
 
   const selectedPill = "bg-gradient-to-r from-yellow-400 to-orange-500 text-[#242b50] shadow-lg";
   const unselectedPill = "bg-white/10 text-white/80 hover:bg-white/20";
@@ -1383,12 +1383,13 @@ function PlanConfigurator({ onSubmit }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="w-full max-w-md mx-auto backdrop-blur-lg bg-white/5 border border-white/10 rounded-2xl p-6 space-y-6 shadow-2xl"
+      className="w-full max-w-md md:max-w-lg mx-auto backdrop-blur-lg bg-white/5 border border-white/10 rounded-2xl p-3 md:p-6 space-y-4 md:space-y-6 shadow-2xl overflow-y-auto max-h-[90vh] min-h-[60vh]"
+      style={{ minWidth: 0 }}
     >
       {/* Pace */}
-      <div className="space-y-2 text-left">
-        <h3 className="text-base font-semibold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">🏃‍♂️ Pace</h3>
-        <div className="flex flex-wrap gap-2 justify-center">
+      <div className="space-y-1 md:space-y-2 text-left">
+        <h3 className="text-sm md:text-base font-semibold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">🏃‍♂️ Pace</h3>
+        <div className="flex flex-nowrap gap-2 justify-center overflow-x-auto pb-1 hide-scrollbar">
           {[
             { label: 'Fast-Paced', value: 'fast' },
             { label: 'Relaxed', value: 'relaxed' },
@@ -1405,9 +1406,9 @@ function PlanConfigurator({ onSubmit }) {
       </div>
 
       {/* Water Activities */}
-      <div className="space-y-2 text-left">
-        <h3 className="text-base font-semibold bg-gradient-to-r from-teal-300 to-cyan-400 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">🏖️ Water Fun</h3>
-        <div className="flex flex-wrap gap-2 justify-center">
+      <div className="space-y-1 md:space-y-2 text-left">
+        <h3 className="text-sm md:text-base font-semibold bg-gradient-to-r from-teal-300 to-cyan-400 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">🏖️ Water Fun</h3>
+        <div className="flex flex-nowrap gap-2 justify-center overflow-x-auto pb-1 hide-scrollbar">
           {[
             { label: 'Yes', value: 'yes' },
             { label: 'No', value: 'no' },
@@ -1424,9 +1425,9 @@ function PlanConfigurator({ onSubmit }) {
       </div>
 
       {/* Transport */}
-      <div className="space-y-2 text-left">
-        <h3 className="text-base font-semibold bg-gradient-to-r from-rose-400 to-pink-500 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">🚗 Transport</h3>
-        <div className="flex flex-wrap gap-2 justify-center">
+      <div className="space-y-1 md:space-y-2 text-left">
+        <h3 className="text-sm md:text-base font-semibold bg-gradient-to-r from-rose-400 to-pink-500 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">🚗 Transport</h3>
+        <div className="flex flex-nowrap gap-2 justify-center overflow-x-auto pb-1 hide-scrollbar">
           {[
             { label: 'Car', value: 'car' },
             { label: 'Public', value: 'public' },
@@ -1443,9 +1444,9 @@ function PlanConfigurator({ onSubmit }) {
       </div>
 
       {/* Start Time */}
-      <div className="space-y-2 text-left">
-        <h3 className="text-base font-semibold bg-gradient-to-r from-purple-400 to-violet-500 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">⏰ Start Time</h3>
-        <div className="flex flex-wrap gap-2 justify-center">
+      <div className="space-y-1 md:space-y-2 text-left">
+        <h3 className="text-sm md:text-base font-semibold bg-gradient-to-r from-purple-400 to-violet-500 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">⏰ Start Time</h3>
+        <div className="flex flex-nowrap gap-2 justify-center overflow-x-auto pb-1 hide-scrollbar">
           {['08:00', '09:00', '10:00', '11:00'].map((time) => (
             <button
               key={time}
@@ -1459,9 +1460,9 @@ function PlanConfigurator({ onSubmit }) {
       </div>
 
       {/* Companions */}
-      <div className="space-y-2 text-left">
-        <h3 className="text-base font-semibold bg-gradient-to-r from-green-300 to-lime-400 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">🧑‍🤝‍🧑 Who's Coming?</h3>
-        <div className="flex flex-wrap gap-2 justify-center">
+      <div className="space-y-1 md:space-y-2 text-left">
+        <h3 className="text-sm md:text-base font-semibold bg-gradient-to-r from-green-300 to-lime-400 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">🧑‍🤝‍🧑 Who's Coming?</h3>
+        <div className="flex flex-nowrap gap-2 justify-center overflow-x-auto pb-1 hide-scrollbar">
           {[{label:'Solo',value:'solo'},{label:'Couple',value:'couple'},{label:'Family',value:'family'}].map(opt=> (
             <button key={opt.value} className={`${pillBase} ${companions===opt.value?selectedPill:unselectedPill}`} onClick={()=>setCompanions(opt.value)}>{opt.label}</button>
           ))}
@@ -1469,9 +1470,9 @@ function PlanConfigurator({ onSubmit }) {
       </div>
 
       {/* Number of POIs */}
-      <div className="space-y-2 text-left">
-        <h3 className="text-base font-semibold bg-gradient-to-r from-amber-400 to-yellow-500 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">📍 Places to Visit</h3>
-        <div className="flex flex-wrap gap-2 justify-center">
+      <div className="space-y-1 md:space-y-2 text-left">
+        <h3 className="text-sm md:text-base font-semibold bg-gradient-to-r from-amber-400 to-yellow-500 bg-clip-text text-transparent uppercase tracking-wide text-center w-full">📍 Places to Visit</h3>
+        <div className="flex flex-nowrap gap-2 justify-center overflow-x-auto pb-1 hide-scrollbar">
           {[
             { label: '🎯 3 places', value: 3 },
             { label: '⏰ 4 places', value: 4 },
@@ -1492,8 +1493,8 @@ function PlanConfigurator({ onSubmit }) {
       </div>
 
       {/* Additional Details */}
-      <div className="space-y-2 text-left">
-        <h3 className="text-sm font-semibold bg-gradient-to-r from-fuchsia-400 to-pink-500 bg-clip-text text-transparent uppercase tracking-wide">
+      <div className="space-y-1 md:space-y-2 text-left">
+        <h3 className="text-xs md:text-sm font-semibold bg-gradient-to-r from-fuchsia-400 to-pink-500 bg-clip-text text-transparent uppercase tracking-wide">
           📝 Extra Notes <span className="text-xs text-white/60 normal-case">(optional)</span>
         </h3>
         <textarea
@@ -1501,7 +1502,7 @@ function PlanConfigurator({ onSubmit }) {
           onChange={(e) => setExtraDetails(e.target.value)}
           rows={3}
           placeholder="e.g. Where can i hit the penjamin?"
-          className="w-full rounded-lg px-4 py-2 bg-white/10 text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-yellow-400/60 resize-none"
+          className="w-full rounded-lg px-3 py-2 md:px-4 md:py-2 bg-white/10 text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-yellow-400/60 resize-none text-xs md:text-sm"
         />
       </div>
 
@@ -1509,7 +1510,7 @@ function PlanConfigurator({ onSubmit }) {
         whileHover={isReady ? { scale: 1.03 } : {}}
         disabled={!isReady}
         onClick={() => onSubmit({ pace, waterActivities, transport, startTime, companions, numberOfPOIs, extraDetails })}
-        className={`w-full py-3 rounded-full text-sm font-bold uppercase tracking-wide transition-colors ${
+        className={`w-full py-2 md:py-3 rounded-full text-xs md:text-sm font-bold uppercase tracking-wide transition-colors ${
           isReady
             ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-[#242b50] shadow-lg'
             : 'bg-white/10 text-white/40 cursor-not-allowed'
