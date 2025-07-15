@@ -29,9 +29,9 @@ export const WorkflowConfig = {
   
   /**
    * OpenAI model for strict workflow (must support JSON mode)
-   * Default: gpt-4-1106-preview (GPT-4 Turbo with JSON support)
+   * Default: gpt-4o-mini (latest model with JSON support and cost efficiency)
    */
-  strictWorkflowModel: process.env.STRICT_WORKFLOW_MODEL || 'gpt-4-1106-preview',
+  strictWorkflowModel: process.env.STRICT_WORKFLOW_MODEL || 'gpt-4o-mini',
   
   // === EXISTING SYSTEM CONTROLS ===
   
@@ -185,6 +185,8 @@ export function validateWorkflowConfig() {
   
   // Check strict workflow model compatibility
   const jsonSupportedModels = [
+    'gpt-4o',
+    'gpt-4o-mini',
     'gpt-4-1106-preview',
     'gpt-4-turbo-preview', 
     'gpt-3.5-turbo-1106'

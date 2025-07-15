@@ -217,7 +217,7 @@ async function getAIRoundDecision({
     let response;
     try {
       response = await openai.chat.completions.create({
-        model: "gpt-4-1106-preview", // Use GPT-4 Turbo which supports structured output
+        model: "gpt-4o-mini", // Use GPT-4o-mini which supports JSON mode
         messages: [
           { role: "system", content: promptData.systemPrompt },
           { role: "user", content: promptData.userPrompt }
@@ -229,7 +229,7 @@ async function getAIRoundDecision({
     } catch (openaiError) {
       debugLog(`OpenAI API error: ${openaiError.message}`);
       return createValidationError('openai_api', openaiError.message, { 
-        model: "gpt-4-1106-preview",
+        model: "gpt-4o-mini",
         currentRound 
       });
     }
@@ -252,7 +252,7 @@ async function getAIRoundDecision({
       
       try {
         const fallbackResponse = await openai.chat.completions.create({
-          model: "gpt-4-1106-preview",
+          model: "gpt-4o-mini",
           messages: [{ role: "user", content: fallbackPrompt }],
           temperature: 0.1,
           max_tokens: 1000,
@@ -435,7 +435,7 @@ async function getAISelectionDecision({
     let response;
     try {
       response = await openai.chat.completions.create({
-        model: "gpt-4-1106-preview",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: promptData.systemPrompt },
           { role: "user", content: promptData.userPrompt }
@@ -447,7 +447,7 @@ async function getAISelectionDecision({
     } catch (openaiError) {
       debugLog(`OpenAI API error in selection: ${openaiError.message}`);
       return createValidationError('openai_api', openaiError.message, { 
-        model: "gpt-4-1106-preview",
+        model: "gpt-4o-mini",
         stage: 'selection',
         candidateCount: candidatePOIs.length
       });
