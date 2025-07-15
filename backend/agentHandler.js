@@ -1,4 +1,4 @@
-// agentHandler.js - LangChain-based Agentic Framework
+// agentHandler.js - LangChain-based Agentic Framework with Multi-Workflow Support
 import { ChatOpenAI } from '@langchain/openai';
 import { AgentExecutor, createOpenAIFunctionsAgent } from 'langchain/agents';
 import { ChatPromptTemplate, MessagesPlaceholder } from '@langchain/core/prompts';
@@ -11,6 +11,13 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { getNearbyPlaces, getTravelTime } from './tools/mapbox.js';
 import { geocodeLocation, validateCoordinates } from './tools/geocoding.js';
+import { executeAIRoundWorkflow } from './strict-workflow-controller.js';
+import { 
+  getChatWorkflow, 
+  WorkflowConfig,
+  createWorkflowContext,
+  logWorkflowUsage 
+} from './config/workflowConfig.js';
 import Ajv from 'ajv';
 
 const execFileAsync = promisify(execFile);
@@ -90,6 +97,115 @@ const tools = [
     }
   }),
 
+  new DynamicStructuredTool({
+    name: "getIntelligentPOIRecommendation",
+    description: "Get AI-powered POI recommendation using configured workflow system. Automatically selects best available workflow (strict AI, enhanced POI, or basic fallback). Use this for high-quality, contextual recommendations.",
+    schema: z.object({
+      currentRound: z.number().describe("Current round number (1 for first POI, 2 for second, etc.)"),
+      selectedPOIs: z.array(z.any()).optional().default([]).describe("Previously selected POIs for context"),
+      userPreferences: z.object({}).optional().default({}).describe("User preferences and interests"),
+      totalPOIs: z.number().optional().default(5).describe("Total number of POIs planned for the trip"),
+      userLocation: z.object({
+        lat: z.number(),
+        lng: z.number()
+      }).optional().describe("User's current location coordinates")
+    }),
+    func: async ({ currentRound, selectedPOIs = [], userPreferences = {}, totalPOIs = 5, userLocation = null }) => {
+      const workflow = WorkflowConfig.useStrictAIWorkflow ? 'strict' : 'enhanced';
+      const context = createWorkflowContext(workflow, 'langchain-intelligent-poi', {
+        currentRound,
+        selectedPOIsCount: selectedPOIs.length,
+        totalPOIs
+      });
+      
+      try {
+        console.log(`🤖 LangChain Agent requesting intelligent POI for round ${currentRound} using ${workflow} workflow`);
+        
+        // Try strict workflow first if enabled
+        if (WorkflowConfig.useStrictAIWorkflow) {
+          const result = await executeAIRoundWorkflow({
+            currentRound,
+            userPreferences,
+            selectedPOIs,
+            totalPOIs,
+            userLocation
+          });
+
+          if (result.success) {
+            console.log(`✅ Strict AI workflow successful: ${result.selectedPOI.name}`);
+            context.success({ workflow: 'strict', selectedPOI: result.selectedPOI.name });
+            
+            return JSON.stringify({
+              success: true,
+              selectedPOI: result.selectedPOI,
+              aiReasoning: result.selectedPOI.aiReasoning,
+              spatialLogic: result.selectedPOI.spatialLogic,
+              fitScore: result.selectedPOI.fitScore,
+              roundDecision: result.aiDecision,
+              source: 'strict_ai_workflow',
+              workflow: 'strict'
+            });
+          } else {
+            console.log(`❌ Strict AI workflow failed: ${result.error}, falling back to enhanced POI system`);
+            // Continue to fallback logic below
+          }
+        }
+        
+        // Fallback to enhanced POI search using existing tools
+        console.log(`🔄 Using fallback: basic getNearbyPlaces tool`);
+        const fallbackContext = createWorkflowContext('enhanced_fallback', 'langchain-intelligent-poi-fallback');
+        
+        // Use existing getNearbyPlaces tool as fallback
+        const centerLat = userLocation?.lat || 36.4341;
+        const centerLng = userLocation?.lng || 28.2176;
+        
+        const fallbackResult = await getNearbyPlaces({ 
+          lat: centerLat, 
+          lng: centerLng, 
+          radius: 5000,
+          type: 'tourist_attraction' 
+        });
+        
+        if (fallbackResult && fallbackResult.length > 0) {
+          const selectedPOI = fallbackResult[0]; // Take first result
+          fallbackContext.success({ fallbackUsed: true });
+          
+          return JSON.stringify({
+            success: true,
+            selectedPOI: {
+              name: selectedPOI.name,
+              description: selectedPOI.description || 'Recommended attraction',
+              location: {
+                coordinates: { lat: centerLat, lng: centerLng }
+              },
+              aiReasoning: 'Selected using fallback mechanism due to strict workflow unavailability',
+              source: 'enhanced_fallback'
+            },
+            source: 'enhanced_fallback',
+            workflow: 'fallback'
+          });
+        }
+        
+        // Ultimate fallback
+        return JSON.stringify({
+          success: false,
+          error: 'All POI recommendation workflows failed',
+          fallback: 'Manual POI selection required'
+        });
+        
+      } catch (error) {
+        console.error(`❌ Intelligent POI tool error: ${error.message}`);
+        context.failure(error, false);
+        
+        return JSON.stringify({
+          success: false,
+          error: error.message,
+          fallback: 'Use getNearbyPlaces as fallback'
+        });
+      }
+    }
+  }),
+
   // RAG retrieval tool (commented out but ready to use)
   /*
   new DynamicStructuredTool({
@@ -147,9 +263,10 @@ For each location you recommend, provide detailed information in this exact JSON
 **Important:** For coordinates, just use the Rhodes center coordinates (36.4341, 28.2176) - they will be automatically geocoded for accuracy based on the location name and address.
 
 **Tool Usage Guidelines:**
-- Use getNearbyPlaces to discover local options around coordinates
+- Use getIntelligentPOIRecommendation for high-quality, AI-powered POI selection with full context analysis
+- Use getNearbyPlaces for basic location discovery around coordinates (fallback option)
 - Use getTravelTime to calculate routes between locations
-- Plan tool usage strategically - gather information before making recommendations
+- Plan tool usage strategically - the intelligent POI tool incorporates user preferences and spatial logic
 - Consider using tools multiple times to build comprehensive itineraries
 
 **Response Structure:**
@@ -235,6 +352,12 @@ export default async function agentHandler(req, res) {
   }
 
   const { history = [], prompt, userLocation = null, userPreferences = {} } = req.body;
+  const chatWorkflow = getChatWorkflow('agent');
+  const context = createWorkflowContext(chatWorkflow, 'agent-chat', {
+    hasLocation: !!userLocation,
+    preferencesCount: Object.keys(userPreferences).length,
+    historyLength: history.length
+  });
 
   try {
     // Initialize LangChain components
@@ -414,6 +537,12 @@ Remember to use tools strategically to gather information before making recommen
     }
 
     console.log('🤖 Agent execution completed');
+    
+    // Log successful agent workflow usage
+    context.success({ 
+      intermediateSteps: result.intermediateSteps?.length || 0,
+      toolsUsed: result.intermediateSteps?.map(step => step.action?.tool).filter(Boolean) || []
+    });
 
     // Extract structured data from the response
     let { locations, cleanedText, metadata } = extractStructuredData(result.output);
@@ -583,7 +712,12 @@ Remember to use tools strategically to gather information before making recommen
           ...metadata,
           agentState: agentState.getState(),
           intermediateSteps: result.intermediateSteps?.length || 0,
-          toolsUsed: result.intermediateSteps?.map(step => step.action?.tool).filter(Boolean) || []
+          toolsUsed: result.intermediateSteps?.map(step => step.action?.tool).filter(Boolean) || [],
+          workflow: chatWorkflow,
+          workflowConfig: {
+            strictWorkflow: WorkflowConfig.useStrictAIWorkflow,
+            enhancedChat: WorkflowConfig.useEnhancedChat
+          }
         }
       }
     });
@@ -591,12 +725,22 @@ Remember to use tools strategically to gather information before making recommen
   } catch (error) {
     console.error('🚨 Agent execution error:', error);
     
+    // Log failed agent workflow usage
+    context.failure(error, false);
+    
     // Fallback to basic response
     return res.status(500).json({ 
       error: 'Agent execution failed',
       fallback: true,
       reply: "I apologize, but I'm experiencing technical difficulties. Please try your request again.",
-      structuredData: { locations: [], metadata: { error: error.message } }
+      structuredData: { 
+        locations: [], 
+        metadata: { 
+          error: error.message,
+          workflow: chatWorkflow,
+          workflowFailed: true
+        }
+      }
     });
   }
 }
