@@ -239,7 +239,7 @@ export default function ChatPage() {
   const [lastResponse, setLastResponse] = useState(null);
   
   // Step-by-step planner state
-  const [stepByStepMode, setStepByStepMode] = useState(true);
+  const [stepByStepMode, setStepByStepMode] = useState(false); // Switch to chat-style UI
   const [stepByStepPlan, setStepByStepPlan] = useState([]);
   
   // Server error handling state

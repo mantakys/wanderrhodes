@@ -34,6 +34,84 @@ const debugLog = (message, data = null) => {
   }
 };
 
+/**
+ * Comprehensive POI deduplication function
+ * Removes duplicates by place_id, name similarity, and spatial proximity
+ */
+function deduplicatePOIs(pois, selectedPOIs = []) {
+  if (!Array.isArray(pois)) return [];
+  
+  debugLog(`Starting deduplication`, { 
+    inputCount: pois.length, 
+    selectedCount: selectedPOIs.length 
+  });
+  
+  // Create comprehensive exclusion sets
+  const excludePlaceIds = new Set();
+  const excludeNames = new Set();
+  const excludeCoordinates = new Set();
+  
+  // Add selected POIs to exclusion sets
+  selectedPOIs.forEach(poi => {
+    if (poi.place_id) excludePlaceIds.add(poi.place_id);
+    if (poi.id) excludePlaceIds.add(poi.id);
+    if (poi.name) excludeNames.add(poi.name.toLowerCase().trim());
+    if (poi.latitude && poi.longitude) {
+      // Round to ~100m precision for spatial deduplication
+      const coordKey = `${Math.round(poi.latitude * 1000)}:${Math.round(poi.longitude * 1000)}`;
+      excludeCoordinates.add(coordKey);
+    }
+  });
+  
+  const deduplicatedPOIs = [];
+  const seenPlaceIds = new Set(excludePlaceIds);
+  const seenNames = new Set(excludeNames);
+  const seenCoordinates = new Set(excludeCoordinates);
+  
+  for (const poi of pois) {
+    let isDuplicate = false;
+    
+    // Check place_id duplication
+    const poiPlaceId = poi.place_id || poi.id;
+    if (poiPlaceId && seenPlaceIds.has(poiPlaceId)) {
+      debugLog(`Excluded duplicate place_id: ${poi.name} (${poiPlaceId})`);
+      isDuplicate = true;
+    }
+    
+    // Check name duplication (case-insensitive)
+    const poiName = poi.name?.toLowerCase().trim();
+    if (!isDuplicate && poiName && seenNames.has(poiName)) {
+      debugLog(`Excluded duplicate name: ${poi.name}`);
+      isDuplicate = true;
+    }
+    
+    // Check spatial duplication (within ~100m)
+    if (!isDuplicate && poi.latitude && poi.longitude) {
+      const coordKey = `${Math.round(poi.latitude * 1000)}:${Math.round(poi.longitude * 1000)}`;
+      if (seenCoordinates.has(coordKey)) {
+        debugLog(`Excluded spatial duplicate: ${poi.name} at ${poi.latitude}, ${poi.longitude}`);
+        isDuplicate = true;
+      } else {
+        seenCoordinates.add(coordKey);
+      }
+    }
+    
+    if (!isDuplicate) {
+      deduplicatedPOIs.push(poi);
+      if (poiPlaceId) seenPlaceIds.add(poiPlaceId);
+      if (poiName) seenNames.add(poiName);
+    }
+  }
+  
+  debugLog(`Deduplication complete`, { 
+    inputCount: pois.length,
+    outputCount: deduplicatedPOIs.length,
+    removedCount: pois.length - deduplicatedPOIs.length
+  });
+  
+  return deduplicatedPOIs;
+}
+
 // Default fallback POIs when location is not available
 const DEFAULT_FALLBACK_POIS = [
   {
@@ -227,6 +305,7 @@ async function executeWorkflowForInitialRecommendations(workflow, { userLocation
 
 /**
  * Execute strict AI workflow for initial recommendations
+ * Uses multi-round workflow to get multiple POIs for better user experience
  */
 async function executeStrictInitialRecommendations({ userLocation, userPreferences, selectedPOIs }) {
   // Check if enhanced features (PostgreSQL) are available
@@ -236,36 +315,48 @@ async function executeStrictInitialRecommendations({ userLocation, userPreferenc
     throw new Error('Strict workflow requires enhanced features (PostgreSQL)');
   }
   
-  debugLog(`Executing strict AI workflow for initial recommendations`);
+  debugLog(`Executing strict AI multi-round workflow for initial recommendations`);
   
-  // Use strict AI workflow for initial recommendation
-  const aiWorkflowResult = await executeAIRoundWorkflow({
-    currentRound: 1,
+  // Import the multi-round workflow from strict-workflow-controller
+  const { executeMultiRoundWorkflow } = await import('./strict-workflow-controller.js');
+  
+  // Use multi-round strict AI workflow to get multiple POIs
+  const multiRoundResult = await executeMultiRoundWorkflow({
+    startRound: 1,
+    endRound: Math.min(userPreferences.numberOfPOIs || 5, 5), // Get up to 5 POIs
     userPreferences,
-    selectedPOIs,
-    totalPOIs: userPreferences.numberOfPOIs || 5,
-    userLocation
+    userLocation,
+    initialSelectedPOIs: selectedPOIs
   });
   
-  if (aiWorkflowResult.success) {
-    debugLog(`Strict AI workflow successful`, {
-      selectedPOI: aiWorkflowResult.selectedPOI.name,
-      source: 'strict_ai_workflow'
+  if (multiRoundResult.success) {
+    // Transform multi-round results into individual POIs
+    const recommendations = multiRoundResult.rounds.map(round => round.selectedPOI);
+    
+    // Apply comprehensive deduplication
+    const deduplicatedRecommendations = deduplicatePOIs(recommendations, selectedPOIs);
+    
+    debugLog(`Strict AI multi-round workflow successful`, {
+      totalRounds: multiRoundResult.rounds.length,
+      totalPOIs: recommendations.length,
+      deduplicatedPOIs: deduplicatedRecommendations.length,
+      source: 'strict_ai_multi_round'
     });
     
     return {
       success: true,
-      recommendations: [aiWorkflowResult.selectedPOI], // Return single POI from AI workflow
-      source: 'strict_ai_workflow',
+      recommendations: deduplicatedRecommendations,
+      source: 'strict_ai_multi_round',
       location: userLocation || RHODES_CENTER,
       aiMetadata: {
-        roundDecision: aiWorkflowResult.aiDecision,
-        aiReasoning: aiWorkflowResult.selectedPOI.aiReasoning,
-        fitScore: aiWorkflowResult.selectedPOI.fitScore
+        totalRounds: multiRoundResult.rounds.length,
+        workflowType: 'multi_round_strict',
+        aiReasoningAvailable: true,
+        allPOIsHaveReasoning: deduplicatedRecommendations.every(poi => !!poi.aiReasoning)
       }
     };
   } else {
-    throw new Error(`Strict AI workflow failed: ${aiWorkflowResult.error}`);
+    throw new Error(`Strict AI multi-round workflow failed: ${multiRoundResult.error}`);
   }
 }
 
@@ -297,10 +388,17 @@ async function executeEnhancedInitialRecommendations({ userLocation, userPrefere
   });
 
   if (recommendations && recommendations.length > 0) {
-    debugLog(`Enhanced POI workflow successful`, { count: recommendations.length });
+    // Apply comprehensive deduplication
+    const deduplicatedRecommendations = deduplicatePOIs(recommendations, selectedPOIs);
+    
+    debugLog(`Enhanced POI workflow successful`, { 
+      totalFound: recommendations.length,
+      deduplicatedCount: deduplicatedRecommendations.length
+    });
+    
     return {
       success: true,
-      recommendations: recommendations.slice(0, 5),
+      recommendations: deduplicatedRecommendations.slice(0, 5),
       source: 'enhanced_spatial',
       location: searchLocation
     };
@@ -326,9 +424,12 @@ async function executeBasicInitialRecommendations({ userLocation, userPreference
     return !nameExcluded && !idExcluded;
   });
 
+  // Apply comprehensive deduplication
+  const deduplicatedRecommendations = deduplicatePOIs(fallbackRecommendations, selectedPOIs);
+  
   return {
     success: true,
-    recommendations: fallbackRecommendations.slice(0, 5),
+    recommendations: deduplicatedRecommendations.slice(0, 5),
     source: 'basic_fallback',
     location: searchLocation
   };
@@ -419,6 +520,7 @@ async function executeWorkflowForNextRecommendations(workflow, { userLocation, u
 
 /**
  * Execute strict AI workflow for next recommendations
+ * Uses contextual recommendations with comprehensive deduplication
  */
 async function executeStrictNextRecommendations({ userLocation, userPreferences, selectedPOIs, currentStep }) {
   // Check if enhanced features (PostgreSQL) are available
@@ -428,42 +530,49 @@ async function executeStrictNextRecommendations({ userLocation, userPreferences,
     throw new Error('Strict workflow requires enhanced features (PostgreSQL)');
   }
   
-  debugLog(`Executing strict AI workflow for step ${currentStep}`);
+  debugLog(`Executing strict AI contextual workflow for step ${currentStep}`);
   
-  // Use strict AI workflow for sequential recommendation
-  const aiWorkflowResult = await executeAIRoundWorkflow({
-    currentRound: currentStep,
+  // Determine search location from last POI or user location
+  const lastPOI = selectedPOIs[selectedPOIs.length - 1];
+  const searchLocation = lastPOI?.location?.coordinates || userLocation || RHODES_CENTER;
+  
+  // Use contextual recommendations for next POIs
+  const recommendations = await getContextualRecommendations({
+    lat: searchLocation.lat,
+    lng: searchLocation.lng,
     userPreferences,
-    selectedPOIs,
-    totalPOIs: userPreferences.numberOfPOIs || 5,
-    userLocation
+    timeOfDay: determineTimeOfDay(currentStep),
+    activityType: determineActivityType(currentStep, userPreferences, selectedPOIs),
+    excludeNames: selectedPOIs.map(poi => poi.name),
+    excludeIds: selectedPOIs.map(poi => poi.place_id || poi.id).filter(Boolean),
+    selectedPOIs
   });
   
-  if (aiWorkflowResult.success) {
-    debugLog(`Strict AI workflow successful for step ${currentStep}`, {
-      selectedPOI: aiWorkflowResult.selectedPOI.name,
-      source: 'strict_ai_workflow'
-    });
+  if (recommendations && recommendations.length > 0) {
+    // Apply comprehensive deduplication
+    const deduplicatedRecommendations = deduplicatePOIs(recommendations, selectedPOIs);
     
-    // Determine search location for response
-    const lastPOI = selectedPOIs[selectedPOIs.length - 1];
-    const searchLocation = lastPOI?.location?.coordinates || userLocation || RHODES_CENTER;
+    debugLog(`Strict AI contextual workflow successful for step ${currentStep}`, {
+      totalFound: recommendations.length,
+      deduplicatedCount: deduplicatedRecommendations.length,
+      source: 'strict_ai_contextual'
+    });
     
     return {
       success: true,
-      recommendations: [aiWorkflowResult.selectedPOI], // Return single POI from AI workflow
-      source: 'strict_ai_workflow',
+      recommendations: deduplicatedRecommendations.slice(0, 5), // Limit to 5 POIs
+      source: 'strict_ai_contextual',
       location: searchLocation,
       context: { currentStep, selectedPOIs: selectedPOIs.length },
       aiMetadata: {
-        roundDecision: aiWorkflowResult.aiDecision,
-        aiReasoning: aiWorkflowResult.selectedPOI.aiReasoning,
-        fitScore: aiWorkflowResult.selectedPOI.fitScore,
-        spatialLogic: aiWorkflowResult.selectedPOI.spatialLogic
+        workflowType: 'contextual_strict',
+        deduplicationApplied: true,
+        originalCount: recommendations.length,
+        finalCount: deduplicatedRecommendations.length
       }
     };
   } else {
-    throw new Error(`Strict AI workflow failed: ${aiWorkflowResult.error}`);
+    throw new Error(`Strict AI contextual workflow returned no recommendations`);
   }
 }
 
@@ -504,13 +613,19 @@ async function executeEnhancedNextRecommendations({ userLocation, userPreference
   });
 
   if (recommendations && recommendations.length > 0) {
+    // Apply comprehensive deduplication
+    const deduplicatedRecommendations = deduplicatePOIs(recommendations, selectedPOIs);
+    
     debugLog(`Enhanced POI workflow successful`, { 
-      totalFound: recommendations.length, activityType, timeOfDay 
+      totalFound: recommendations.length,
+      deduplicatedCount: deduplicatedRecommendations.length,
+      activityType, 
+      timeOfDay 
     });
 
     return {
       success: true,
-      recommendations: recommendations.slice(0, 5),
+      recommendations: deduplicatedRecommendations.slice(0, 5),
       source: 'enhanced_contextual',
       location: searchLocation,
       context: { activityType, timeOfDay, currentStep, selectedPOIs }
@@ -539,9 +654,12 @@ async function executeBasicNextRecommendations({ userLocation, userPreferences, 
     return !nameExcluded && !idExcluded && !selectedExcluded;
   });
 
+  // Apply comprehensive deduplication
+  const deduplicatedRecommendations = deduplicatePOIs(fallbackRecommendations, selectedPOIs);
+  
   return {
     success: true,
-    recommendations: fallbackRecommendations.slice(0, 5),
+    recommendations: deduplicatedRecommendations.slice(0, 5),
     source: 'basic_filtered_fallback',
     location: searchLocation
   };
