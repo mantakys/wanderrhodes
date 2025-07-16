@@ -314,7 +314,7 @@ export async function searchPOIsAdvanced(criteria) {
   }
 
   if (excludeIds && excludeIds.length > 0) {
-    query += ` AND id <> ALL($${paramIndex})`;
+    query += ` AND place_id <> ALL($${paramIndex})`;
     params.push(excludeIds);
     paramIndex++;
   }

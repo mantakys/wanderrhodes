@@ -12,6 +12,8 @@ import {
   getContextualRecommendations,
   getAlternativeSuggestions
 } from './enhanced-chat-tools.js';
+import { executeMultiRoundWorkflow } from './strict-workflow-controller.js';
+import { WorkflowConfig } from './config/workflowConfig.js';
 import Ajv from 'ajv';
 
 const execFileAsync = promisify(execFile);
@@ -151,6 +153,92 @@ async function getContextualRecommendationsTool(params) {
   }
 }
 
+// Strict AI workflow for intelligent itinerary planning
+async function getStrictAIRecommendationsTool(params) {
+  const { lat, lng, userPreferences = {}, selectedPOIs = [], totalPOIs = 5 } = params;
+  
+  debugLog(`getStrictAIRecommendationsTool called`, { 
+    lat, lng, 
+    userPreferencesCount: Object.keys(userPreferences).length,
+    selectedPOIsCount: selectedPOIs.length,
+    totalPOIs
+  });
+  
+  try {
+    // Check if strict AI workflow is enabled
+    if (!WorkflowConfig.useStrictAIWorkflow) {
+      debugLog(`Strict AI workflow disabled, falling back to enhanced recommendations`);
+      return await getContextualRecommendationsTool({ lat, lng, userPreferences });
+    }
+    
+    const userLocation = { lat, lng };
+    
+    // Execute multi-round workflow to get multiple POIs for chat interface
+    const workflowResult = await executeMultiRoundWorkflow({
+      startRound: selectedPOIs.length + 1,
+      endRound: Math.min(selectedPOIs.length + totalPOIs, 5), // Get up to 5 POIs total
+      userPreferences,
+      userLocation,
+      initialSelectedPOIs: selectedPOIs
+    });
+    
+    if (!workflowResult.success) {
+      debugLog(`Strict AI workflow failed: ${workflowResult.error}`, workflowResult.details);
+      
+      // Fallback to enhanced recommendations
+      debugLog(`Falling back to enhanced recommendations`);
+      return await getContextualRecommendationsTool({ lat, lng, userPreferences });
+    }
+    
+    // Transform workflow results to match chat interface expectations
+    const recommendations = workflowResult.rounds.map(round => {
+      const poi = round.selectedPOI;
+      return {
+        name: poi.name,
+        place_id: poi.place_id || poi.id,
+        latitude: poi.latitude,
+        longitude: poi.longitude,
+        address: poi.address,
+        rating: poi.rating,
+        price_level: poi.price_level,
+        types: poi.type ? [poi.type] : [],
+        opening_hours: poi.opening_hours,
+        phone: poi.phone,
+        website: poi.website,
+        
+        // Enhanced fields from strict workflow
+        description: poi.description,
+        highlights: poi.highlights || [],
+        local_tips: poi.local_tips || [],
+        
+        // AI reasoning from strict workflow  
+        aiReasoning: poi.aiReasoning,
+        spatialLogic: poi.spatialLogic,
+        fitScore: poi.fitScore,
+        roundNumber: poi.roundNumber,
+        aiDecisionContext: poi.aiDecisionContext,
+        
+        // Mark as AI-generated
+        source: 'strict_ai_workflow'
+      };
+    });
+    
+    debugLog(`Strict AI workflow successful`, { 
+      recommendationCount: recommendations.length,
+      totalRounds: workflowResult.rounds.length,
+      hasAIReasoning: recommendations.every(r => !!r.aiReasoning)
+    });
+    
+    return recommendations;
+    
+  } catch (error) {
+    debugLog(`getStrictAIRecommendationsTool error: ${error.message}`);
+    
+    // Fallback to enhanced recommendations
+    return await getContextualRecommendationsTool({ lat, lng, userPreferences });
+  }
+}
+
 const locationSchema = {
   type: "object",
   properties: {
@@ -236,7 +324,22 @@ export default async function chatHandler(req, res) {
   const systemPrompt = `
 You are WanderRhodes, a passionate local expert and travel companion for Rhodes Island. Think of yourself as a friendly local friend who knows every hidden gem and secret spot on the island.
 
-${hasEnhanced ? `
+${WorkflowConfig.useStrictAIWorkflow ? `
+🤖 STRICT AI MODE: You have access to the most advanced AI-powered travel planning system!
+
+**Your AI Capabilities:**
+- Strict AI workflow: Two-step AI reasoning (AI decides → Server queries → AI selects from real data)
+- Semantic understanding: "water fun" automatically includes beaches + restaurants + water sports
+- Intelligent spatial logic: Dynamic radius calculation based on context and user preferences
+- AI reasoning: Every recommendation comes with detailed reasoning and fit scores
+- Contextual awareness: Understands travel flow, user patterns, and creates variety
+
+**Primary Tool Usage:**
+- Use "getStrictAIRecommendations" for the highest quality, AI-curated travel plans
+- This tool provides multiple POIs with AI reasoning for each selection
+- Automatically handles spatial relationships and user preference matching
+
+` : hasEnhanced ? `
 🚀 ENHANCED MODE: You have access to spatial intelligence with 2,930+ POIs and 21,000+ spatial relationships!
 
 **Your Enhanced Capabilities:**
@@ -403,6 +506,28 @@ Begin by gathering any missing details from the user, then plan a personalized i
     });
   }
 
+  // Add strict AI workflow tool if available
+  if (WorkflowConfig.useStrictAIWorkflow) {
+    tools.push({
+      type: "function",
+      function: {
+        name: "getStrictAIRecommendations",
+        description: "Get intelligent, AI-curated travel recommendations using advanced reasoning and semantic understanding. This tool uses a two-step AI workflow for the highest quality recommendations with AI reasoning for each selection.",
+        parameters: {
+          type: "object",
+          properties: {
+            lat: { type: "number" },
+            lng: { type: "number" },
+            userPreferences: { type: "object", default: {} },
+            selectedPOIs: { type: "array", items: { type: "object" }, default: [] },
+            totalPOIs: { type: "number", default: 5 }
+          },
+          required: ["lat", "lng"]
+        }
+      }
+    });
+  }
+
   // Helper to ensure every message has a valid string content (OpenAI API rejects null/undefined)
   const sanitizeMessages = (msgs) => msgs.map((m) => {
     if (m.content === null || m.content === undefined) {
@@ -428,7 +553,7 @@ Begin by gathering any missing details from the user, then plan a personalized i
     availableTools: tools.length
   });
 
-  const MAX_ITERATIONS = 5;
+  const MAX_ITERATIONS = 10;  // Increase from 5 to 10
   for (let i = 0; i < MAX_ITERATIONS; i++) {
     debugLog(`Chat iteration ${i + 1}/${MAX_ITERATIONS}`);
     
@@ -467,6 +592,9 @@ Begin by gathering any missing details from the user, then plan a personalized i
             } else if (name === "getContextualRecommendations") {
               debugLog(`➡️ Calling contextual recommendations with user preferences`);
               result = await getContextualRecommendationsTool(parsedArgs);
+            } else if (name === "getStrictAIRecommendations") {
+              debugLog(`➡️ Calling strict AI workflow for intelligent recommendations`);
+              result = await getStrictAIRecommendationsTool(parsedArgs);
             }
             
             const executionTime = Date.now() - toolStartTime;
@@ -548,12 +676,16 @@ Begin by gathering any missing details from the user, then plan a personalized i
   // Augment with travel times/distances if they are missing
   await addTravelTimes(geocodedLocations, userLocation);
 
+  const workflowType = WorkflowConfig.useStrictAIWorkflow ? 'STRICT_AI_WORKFLOW' : 
+                      hasEnhanced ? 'ENHANCED_SPATIAL' : 'BASIC_MAPBOX';
+
   debugLog(`🎉 Chat workflow completed successfully`, { 
     finalLocationCount: geocodedLocations.length,
     enhancedFeaturesUsed: hasEnhanced,
+    strictAIWorkflowUsed: WorkflowConfig.useStrictAIWorkflow,
     responseLength: cleanedText?.length || 0,
     hasLocations: geocodedLocations.length > 0,
-    workflowType: hasEnhanced ? 'ENHANCED_SPATIAL' : 'BASIC_MAPBOX'
+    workflowType
   });
 
   return res.status(200).json({ 
@@ -563,8 +695,14 @@ Begin by gathering any missing details from the user, then plan a personalized i
       metadata: {
         ...metadata,
         enhancedPOIUsed: hasEnhanced,
+        strictAIWorkflowUsed: WorkflowConfig.useStrictAIWorkflow,
         debugEnabled: DEBUG_ENABLED,
-        workflowType: hasEnhanced ? 'ENHANCED_SPATIAL' : 'BASIC_MAPBOX'
+        workflowType,
+        workflowConfig: {
+          useStrictAIWorkflow: WorkflowConfig.useStrictAIWorkflow,
+          useEnhancedChat: WorkflowConfig.useEnhancedChat,
+          useEnhancedPOI: WorkflowConfig.useEnhancedPOI
+        }
       }
     }
   });
