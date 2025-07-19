@@ -28,6 +28,26 @@ const debugLog = (message, data = null) => {
 };
 
 /**
+ * Extract JSON from AI response that may contain markdown code blocks
+ */
+function extractJsonFromResponse(response) {
+  // Try to extract JSON from markdown code blocks
+  const jsonBlockMatch = response.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+  if (jsonBlockMatch) {
+    return jsonBlockMatch[1];
+  }
+  
+  // Try to find JSON object in the response
+  const jsonMatch = response.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    return jsonMatch[0];
+  }
+  
+  // Return original response if no patterns found
+  return response;
+}
+
+/**
  * AI analyzes user preferences to create intelligent planning strategy
  */
 export async function createIntelligentPlanStrategy(userPreferences, userLocation) {
@@ -92,7 +112,8 @@ Return a JSON strategy with this exact structure:
     });
 
     const response = completion.choices[0].message.content;
-    const strategy = JSON.parse(response);
+    const jsonString = extractJsonFromResponse(response);
+    const strategy = JSON.parse(jsonString);
 
     debugLog('AI strategy created', { 
       roundCount: strategy.strategy.rounds.length,
@@ -228,7 +249,8 @@ Already Selected POIs: ${selectedPOIs.length > 0 ? selectedPOIs.map(p => `${p.na
     });
 
     const response = completion.choices[0].message.content;
-    const queryStrategy = JSON.parse(response);
+    const jsonString = extractJsonFromResponse(response);
+    const queryStrategy = JSON.parse(jsonString);
 
     debugLog('AI KB query crafted', { strategy: queryStrategy.strategy });
 
@@ -362,7 +384,8 @@ Return POI IDs in ranked order (best first):
     });
 
     const response = completion.choices[0].message.content;
-    const curation = JSON.parse(response);
+    const jsonString = extractJsonFromResponse(response);
+    const curation = JSON.parse(jsonString);
 
     // Map selected IDs back to full POI objects
     const curatedPOIs = curation.selectedPOIs.map(selection => {
