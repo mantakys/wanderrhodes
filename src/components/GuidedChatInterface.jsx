@@ -117,6 +117,7 @@ const GuidedChatInterface = ({
     setCurrentRound(roundNumber);
 
     try {
+      console.log('📤 Sending planStrategy:', planStrategy);
       const response = await fetch('/api/guided-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
