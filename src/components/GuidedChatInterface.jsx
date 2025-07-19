@@ -88,6 +88,7 @@ const GuidedChatInterface = ({
 
         // Start first intelligent round
         setTimeout(() => {
+          console.log('🔄 Transitioning to guided phase...');
           setCurrentPhase('guided');
           startIntelligentRound(1);
         }, 1500);
@@ -111,6 +112,7 @@ const GuidedChatInterface = ({
    * Start an intelligent AI-driven round
    */
   const startIntelligentRound = async (roundNumber) => {
+    console.log(`🎯 Starting intelligent round ${roundNumber}...`);
     setIsLoading(true);
     setCurrentRound(roundNumber);
 
@@ -131,6 +133,7 @@ const GuidedChatInterface = ({
       const data = await response.json();
 
       if (data.success) {
+        console.log('✅ Round data received:', data.recommendations?.length || 0, 'recommendations');
         setRoundData(data.round);
         setCurrentRecommendations(data.recommendations);
 
@@ -354,6 +357,7 @@ const GuidedChatInterface = ({
         </AnimatePresence>
 
         {/* Current Round Recommendations */}
+        {console.log(`🔍 Render check: phase=${currentPhase}, recommendations=${currentRecommendations.length}, roundData=${!!roundData}`)}
         {currentPhase === 'guided' && currentRecommendations.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
