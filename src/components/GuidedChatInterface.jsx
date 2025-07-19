@@ -347,7 +347,7 @@ const GuidedChatInterface = ({
               key={message.id}
               message={message}
               onPOISelect={currentPhase === 'guided' ? handlePOISelection : null}
-              onStartRound={startRound}
+              onStartRound={startIntelligentRound}
               onCompleteRound={completeRound}
             />
           ))}
