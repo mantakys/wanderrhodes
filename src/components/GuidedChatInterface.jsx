@@ -90,7 +90,7 @@ const GuidedChatInterface = ({
         setTimeout(() => {
           console.log('🔄 Transitioning to guided phase...');
           setCurrentPhase('guided');
-          startIntelligentRound(1);
+          startIntelligentRound(1, data.strategy);
         }, 1500);
 
       } else {
@@ -111,13 +111,16 @@ const GuidedChatInterface = ({
   /**
    * Start an intelligent AI-driven round
    */
-  const startIntelligentRound = async (roundNumber) => {
+  const startIntelligentRound = async (roundNumber, strategyOverride = null) => {
     console.log(`🎯 Starting intelligent round ${roundNumber}...`);
     setIsLoading(true);
     setCurrentRound(roundNumber);
 
+    // Use passed strategy or fall back to state
+    const activeStrategy = strategyOverride || planStrategy;
+    console.log('📤 Sending planStrategy:', activeStrategy);
+
     try {
-      console.log('📤 Sending planStrategy:', planStrategy);
       const response = await fetch('/api/guided-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -127,7 +130,7 @@ const GuidedChatInterface = ({
           userLocation,
           selectedPOIs,
           currentRound: roundNumber,
-          planStrategy
+          planStrategy: activeStrategy
         })
       });
 
