@@ -7,6 +7,7 @@ import AgentStatusIndicator from "../components/ui/AgentStatusIndicator";
 import TravelPreferences from "../components/ui/TravelPreferences";
 import PlanEditor from "../components/ui/PlanEditor";
 import StepByStepPlanner from "../components/StepByStepPlanner";
+import GuidedChatInterface from "../components/GuidedChatInterface";
 import { motion, AnimatePresence } from "framer-motion";
 import { Copy, BookMarked, ArrowLeft, Send, Sparkles, Thermometer, SunMedium, MapPin, Settings, Edit } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
@@ -238,8 +239,8 @@ export default function ChatPage() {
   const [editablePlan, setEditablePlan] = useState([]);
   const [lastResponse, setLastResponse] = useState(null);
   
-  // Step-by-step planner state
-  const [stepByStepMode, setStepByStepMode] = useState(false); // Switch to chat-style UI
+  // Planning mode state
+  const [planningMode, setPlanningMode] = useState('guided'); // 'guided' | 'stepByStep' | 'chat'
   const [stepByStepPlan, setStepByStepPlan] = useState([]);
   
   // Server error handling state
@@ -510,10 +511,10 @@ export default function ChatPage() {
       handlePreferencesUpdate(preferences);
       setShowPreferences(false);
       
-      // Always show step-by-step mode confirmation since we're now in step-by-step mode by default
+      // Start guided chat mode with AI-driven rounds
       toast({
-        title: "Let's build your perfect day! 🚀",
-        description: "Now you can choose each place you want to visit, step by step.",
+        title: "Perfect! 🧠✨",
+        description: "AI is analyzing your preferences to create your personalized Rhodes discovery plan.",
         duration: 4000,
       });
     } else {
@@ -871,9 +872,9 @@ export default function ChatPage() {
               extraDetails: cfg.extraDetails || ''
             };
             
-            // Set preferences and show step-by-step mode
+            // Set preferences and start guided chat mode
             handlePreferencesUpdate(preferences);
-            handlePreferencesComplete(preferences);
+            setPlanningMode('guided');
           }}
         />
         <Toaster />
@@ -934,15 +935,37 @@ export default function ChatPage() {
         </div>
       </header>
 
-      {/* CHAT OR STEP-BY-STEP PLANNER */}
-      {stepByStepMode ? (
+      {/* MAIN CONTENT - GUIDED CHAT, STEP-BY-STEP, OR TRADITIONAL CHAT */}
+      {planningMode === 'guided' ? (
+        <div className="flex-1 overflow-y-auto">
+          <GuidedChatInterface
+            userPreferences={userPreferences}
+            userLocation={userLocation}
+            onPlanComplete={(plan) => {
+              setCurrentPlan({
+                title: `Guided Rhodes Adventure (${plan.length} places)`,
+                locations: plan,
+                timestamp: Date.now(),
+                guided: true
+              });
+              setPlanSaved(false);
+              toast({
+                title: "Your travel plan is ready! 🎉",
+                description: `Created ${plan.length} amazing stops. You can now chat freely to add more or get tips!`,
+                duration: 5000,
+              });
+            }}
+            onPlanUpdate={handleStepByStepPlanUpdate}
+          />
+        </div>
+      ) : planningMode === 'stepByStep' ? (
         <div className="flex-1 overflow-y-auto">
           <StepByStepPlanner
             userPreferences={userPreferences}
             userLocation={userLocation}
             onPlanComplete={handleStepByStepComplete}
             onPlanUpdate={handleStepByStepPlanUpdate}
-            isNewPlan={isNewPlan} // pass isNewPlan prop
+            isNewPlan={isNewPlan}
           />
         </div>
       ) : (
@@ -1008,8 +1031,8 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* BOTTOM: suggestions + free-pill + input - only show in chat mode */}
-      {!stepByStepMode && (
+      {/* BOTTOM: suggestions + free-pill + input - only show in traditional chat mode */}
+      {planningMode === 'chat' && (
       <motion.footer
         initial={{ y: 100 }}
         animate={{ y: 0 }}
