@@ -69,10 +69,10 @@ const LocationCard = ({ location }) => {
 
       fetchPlaceData();
     }
-  }, [isExpanded, location.name, location.location.address, placeData, isLoading, error]);
+  }, [isExpanded, location.name, location.location?.address || location.address, placeData, isLoading, error]);
 
   const displayName = placeData?.name || location.name;
-  const displayAddress = placeData?.address || location.location.address;
+  const displayAddress = placeData?.address || location.location?.address || location.address;
 
   return (
     <motion.div
@@ -87,11 +87,11 @@ const LocationCard = ({ location }) => {
         <div className="flex justify-between items-start">
           <div>
             <h3 className="text-lg font-semibold text-[#E8D5A4]">{displayName}</h3>
-            <p className="text-sm text-[#F4E1C1]/80 capitalize">{location.type}</p>
+            <p className="text-sm text-[#F4E1C1]/80 capitalize">{location.type || location.primary_type}</p>
           </div>
-          {location.details?.rating && (
+          {(location.details?.rating || location.rating) && (
             <div className="bg-[#E8D5A4]/20 text-[#E8D5A4] px-2 py-1 rounded-md text-sm font-bold">
-              {location.details.rating} ★
+              {location.details?.rating || location.rating} ★
             </div>
           )}
         </div>
@@ -224,11 +224,11 @@ const LocationCard = ({ location }) => {
               )}
 
               {/* Tips */}
-              {location.tips?.length > 0 && (
+              {(location.tips?.length > 0 || location.local_tips?.length > 0) && (
                 <div className="mb-4">
                   <h4 className="font-semibold text-[#E8D5A4] mb-1">Local Tips</h4>
                   <ul className="list-disc list-inside text-[#F4E1C1]/80 text-sm space-y-1">
-                    {location.tips.map((tip, index) => (
+                    {(location.tips || location.local_tips || []).map((tip, index) => (
                       <li key={index}>{tip}</li>
                     ))}
                   </ul>
@@ -275,9 +275,9 @@ const LocationCard = ({ location }) => {
                   >
                     View on Map
                   </a>
-                ) : location.location?.coordinates && (
+                ) : (location.location?.coordinates || (location.latitude && location.longitude)) && (
                   <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${location.location.coordinates.lat},${location.location.coordinates.lng}`}
+                    href={`https://www.google.com/maps/search/?api=1&query=${location.location?.coordinates?.lat || location.latitude},${location.location?.coordinates?.lng || location.longitude}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[#E8D5A4] hover:underline"
