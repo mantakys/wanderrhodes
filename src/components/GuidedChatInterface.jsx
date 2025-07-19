@@ -185,7 +185,12 @@ const GuidedChatInterface = ({
     setMessages(prev => [...prev, selectionMessage]);
 
     // Check if round is complete
-    if (updatedPOIs.filter(p => matchesRoundType(p, roundData?.type)).length >= roundData?.maxSelections) {
+    const expectedSelections = roundData?.expectedSelections || roundData?.maxSelections || 1;
+    const matchingPOIs = updatedPOIs.filter(p => matchesRoundType(p, roundData?.type));
+    console.log(`🔢 Round completion check: ${matchingPOIs.length}/${expectedSelections} selections for ${roundData?.type}`);
+    
+    if (matchingPOIs.length >= expectedSelections) {
+      console.log('✅ Round complete! Moving to next round...');
       completeRound();
     }
   };
@@ -369,7 +374,7 @@ const GuidedChatInterface = ({
             className="space-y-3"
           >
             <h3 className="text-[#E8D5A4] font-semibold">
-              Choose {roundData?.maxSelections} {roundData?.type}(s):
+              Choose {roundData?.expectedSelections || roundData?.maxSelections || 1} {roundData?.type}(s):
             </h3>
             {currentRecommendations.map((poi, index) => (
               <motion.div
